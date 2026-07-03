@@ -11,5 +11,6 @@ export * from "./lenses.js";
 export * from "./analyzer.js";
 export * from "./store.js";
 export * from "./risk.js";
+export * from "./guardrails.js";
 
 export const CODEMAPS_CORE_VERSION = "0.0.0";

@@ -13,6 +13,7 @@
 
 import { CODEMAPS_CORE_VERSION } from "@codemaps/core";
 import { runRisk } from "./risk-command.js";
+import { runGuardrails } from "./guardrails-command.js";
 
 type Command = "risk" | "guardrails" | "init" | "index" | "serve" | "explore" | "help" | "version";
 
@@ -61,6 +62,8 @@ async function main(): Promise<void> {
       process.exitCode = await runRisk(rest);
       break;
     case "guardrails":
+      process.exitCode = await runGuardrails(rest);
+      break;
     case "init":
     case "index":
     case "serve":
