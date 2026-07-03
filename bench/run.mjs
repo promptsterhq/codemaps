@@ -107,7 +107,8 @@ async function runOne(task, arm) {
   });
   const seconds = Math.round((Date.now() - started) / 1000);
 
-  // 4. Record diff + transcript.
+  // 4. Record diff + transcript. add -N so newly created files show in the diff.
+  execFileSync("git", ["-C", workdir, "add", "-N", "."], { stdio: "ignore" });
   const diff = execFileSync("git", ["-C", workdir, "diff"], { maxBuffer: 64 * 1024 * 1024 }).toString();
   const result = {
     task: task.id, arm, seconds,
