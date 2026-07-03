@@ -244,6 +244,26 @@ async function complexityProxy(absPath: string): Promise<{ loc: number; indentDe
 const HOTSPOT_WARN_PERCENTILE = 80;
 const RECENT_CHURN_DAYS = 30;
 
+/** Compact per-file risk snapshot for fast hook lookups (.codemaps/risk.json). */
+export interface RiskCache {
+  generatedAt: string;
+  windowMonths: number;
+  files: Record<string, { hotspotPercentile: number; busFactor: number; commits: number; topOwner: string }>;
+}
+
+export function toRiskCache(index: RepoRiskIndex): RiskCache {
+  const files: RiskCache["files"] = {};
+  for (const [p, f] of index.files) {
+    files[p] = {
+      hotspotPercentile: f.hotspotPercentile,
+      busFactor: f.busFactor,
+      commits: f.commits,
+      topOwner: f.authors[0]?.name ?? "unknown",
+    };
+  }
+  return { generatedAt: index.generatedAt, windowMonths: index.windowMonths, files };
+}
+
 export function riskForPath(index: RepoRiskIndex, target: string): RiskReport | null {
   const rel = normalizeTarget(index.repoRoot, target);
   const exact = index.files.get(rel);

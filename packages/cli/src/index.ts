@@ -16,6 +16,7 @@ import { runRisk } from "./risk-command.js";
 import { runGuardrails } from "./guardrails-command.js";
 import { runImpact, runIndex, runLocate } from "./graph-commands.js";
 import { runInit } from "./init-command.js";
+import { runHook } from "./hook-command.js";
 
 type Command =
   | "risk"
@@ -26,6 +27,7 @@ type Command =
   | "index"
   | "serve"
   | "explore"
+  | "hook"
   | "help"
   | "version";
 
@@ -41,6 +43,7 @@ function parse(argv: string[]): { command: Command; rest: string[] } {
     case "index":
     case "serve":
     case "explore":
+    case "hook":
       return { command: cmd, rest };
     case "-v":
     case "--version":
@@ -98,6 +101,9 @@ async function main(): Promise<void> {
       // stdio server stays alive until the client disconnects.
       break;
     }
+    case "hook":
+      process.exitCode = await runHook();
+      break;
     case "explore":
       console.log(`[codemaps] "${command}" is not implemented yet (Phase 0 in progress).`);
       break;

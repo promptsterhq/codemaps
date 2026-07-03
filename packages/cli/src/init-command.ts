@@ -11,7 +11,11 @@ import {
   buildRiskIndex,
   generateAgentsMd,
   indexTypeScript,
+  loadCodemap,
+  mergeFindings,
   mineGuardrails,
+  saveCodemap,
+  toRiskCache,
 } from "@codemaps/core";
 
 const execFileAsync = promisify(execFile);
@@ -30,15 +34,27 @@ export async function runInit(args: string[]): Promise<number> {
 
   console.log(`[codemaps] analyzing ${repoRoot} …`);
 
-  // 1. Risk (the moat, from git alone).
+  // 1. Risk (the moat, from git alone) — also cached for fast hook lookups.
   const riskIndex = await buildRiskIndex(repoRoot);
-  console.log(`  ✓ risk        ${riskIndex.files.size} file(s) from ${riskIndex.totalCommits} commits`);
+  await mkdir(path.join(repoRoot, ".codemaps"), { recursive: true });
+  await writeFile(
+    path.join(repoRoot, ".codemaps", "risk.json"),
+    JSON.stringify(toRiskCache(riskIndex)),
+  );
+  console.log(`  ✓ risk        ${riskIndex.files.size} file(s) from ${riskIndex.totalCommits} commits (+ hook cache)`);
 
-  // 2. Guardrails (materiality-gated by risk).
+  // 2. Guardrails (materiality-gated by risk), synced into codemap/.
   const guardrails = await mineGuardrails(repoRoot, ".", riskIndex);
+  const codemap = await loadCodemap(repoRoot);
+  const counts = mergeFindings(codemap, [...guardrails.findings, ...guardrails.suppressed],
+    new Date().toISOString().slice(0, 10));
+  await saveCodemap(repoRoot, codemap);
   const zones = guardrails.findings.filter((f) => f.kind === "do-not-touch").length;
   const invariants = guardrails.findings.filter((f) => f.kind === "invariant").length;
-  console.log(`  ✓ guardrails  ${zones} do-not-touch zone(s), ${invariants} material invariant(s)`);
+  console.log(
+    `  ✓ guardrails  ${zones} zone(s), ${invariants} material invariant(s) ` +
+      `(codemap/guardrails.json: +${counts.added} new, ${counts.kept} human-decided kept)`,
+  );
 
   // 3. Thin graph (table stakes).
   const idx = await indexTypeScript(repoRoot);
@@ -79,12 +95,52 @@ export async function runInit(args: string[]): Promise<number> {
     }
   }
 
+  // 6. Optional: register enforcement hooks in project .claude/settings.json.
+  if (args.includes("--hooks")) {
+    await registerHooks(repoRoot);
+  }
+
   console.log(`
 [codemaps] done. To give agents live access, register the MCP server:
 
   Claude Code:   claude mcp add codemaps -- codemaps serve
   Cursor etc.:   add to mcp config: { "command": "codemaps", "args": ["serve"] }
-
+${args.includes("--hooks") ? "" : `
+  Optional: codemaps init --hooks registers a PreToolUse guardrail check in
+  .claude/settings.json (warns on hotspots/invariants; blocks only human-
+  CONFIRMED do-not-touch zones).
+`}
 Agents get: risk · guardrails · impact · locate (see AGENTS.md).`);
   return 0;
+}
+
+/** Merge our hooks into .claude/settings.json without clobbering existing config. */
+async function registerHooks(repoRoot: string): Promise<void> {
+  const settingsDir = path.join(repoRoot, ".claude");
+  const settingsPath = path.join(settingsDir, "settings.json");
+  await mkdir(settingsDir, { recursive: true });
+
+  let settings: Record<string, unknown> = {};
+  try {
+    settings = JSON.parse(await readFile(settingsPath, "utf8")) as Record<string, unknown>;
+  } catch {
+    /* fresh file */
+  }
+
+  const hooks = (settings.hooks ?? {}) as Record<string, unknown[]>;
+  const entry = {
+    matcher: "Edit|Write",
+    hooks: [{ type: "command", command: "codemaps hook", timeout: 10 }],
+  };
+  const existing = JSON.stringify(hooks.PreToolUse ?? []);
+  if (!existing.includes("codemaps hook")) {
+    hooks.PreToolUse = [...(hooks.PreToolUse ?? []), entry];
+  }
+  const sessionEntry = { hooks: [{ type: "command", command: "codemaps hook", timeout: 10 }] };
+  if (!JSON.stringify(hooks.SessionStart ?? []).includes("codemaps hook")) {
+    hooks.SessionStart = [...(hooks.SessionStart ?? []), sessionEntry];
+  }
+  settings.hooks = hooks;
+  await writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  console.log(`  ✓ hooks       PreToolUse + SessionStart registered in .claude/settings.json`);
 }
