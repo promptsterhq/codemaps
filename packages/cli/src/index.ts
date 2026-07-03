@@ -17,6 +17,7 @@ import { runGuardrails } from "./guardrails-command.js";
 import { runImpact, runIndex, runLocate } from "./graph-commands.js";
 import { runInit } from "./init-command.js";
 import { runHook } from "./hook-command.js";
+import { runExplore } from "./explore-command.js";
 
 type Command =
   | "risk"
@@ -105,7 +106,7 @@ async function main(): Promise<void> {
       process.exitCode = await runHook();
       break;
     case "explore":
-      console.log(`[codemaps] "${command}" is not implemented yet (Phase 0 in progress).`);
+      process.exitCode = await runExplore(rest);
       break;
     case "help":
       console.log(HELP);
