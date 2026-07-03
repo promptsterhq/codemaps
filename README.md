@@ -28,7 +28,23 @@ Codemaps answers the questions a senior/principal/security engineer needs to cha
 
 ## Status
 
-Early / pre-alpha. Phase 0 builds a *thin* TS/Python graph (just enough scaffolding for `impact()`/`locate()`) and leads with the differentiated layer: a first Guardrails slice + an evaluation benchmark proving fewer bad edits vs. commodity graph + grep. See [`docs/VISION.md`](docs/VISION.md) for the plan, [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md) for the defensible layers, and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the market/technical grounding (incl. the 2026 competitive re-scan).
+Working pre-alpha — Phase 0 complete, Phase 1 in progress. What works today:
+
+```bash
+codemaps init            # risk + guardrails + graph + AGENTS.md (+ CLAUDE.md bridge)
+codemaps risk <path>     # hotspot pct, churn, owners, bus-factor + "slow down" warnings
+codemaps guardrails <p>  # do-not-touch zones + mined invariants (materiality-gated)
+codemaps guardrails confirm <id>   # promote to human-confirmed (durable, versioned in codemap/)
+codemaps impact <symbol> # reverse blast radius + affected tests (TS + Python)
+codemaps locate <query>  # ranked symbol/file search
+codemaps serve           # MCP server: risk/guardrails/impact/locate for any MCP agent
+codemaps init --hooks    # PreToolUse hook: warns on hotspots/invariants,
+                         # blocks only human-CONFIRMED do-not-touch zones
+```
+
+First benchmark result (same model, same prompt, lockfile trap): the baseline agent hand-edited `pnpm-lock.yaml`; with Codemaps context it refused, cited the guardrail, and finished 2× faster. Harness + tasks in [`bench/`](bench/).
+
+See [`docs/VISION.md`](docs/VISION.md) for the plan, [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md) for the defensible layers, and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the market/technical grounding (incl. the 2026 competitive re-scan).
 
 ## Repo layout
 
