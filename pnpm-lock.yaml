@@ -36,6 +36,9 @@ importers:
       tree-sitter-wasms:
         specifier: ^0.1.13
         version: 0.1.13
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
       web-tree-sitter:
         specifier: ^0.24.7
         version: 0.24.7
@@ -43,9 +46,6 @@ importers:
       '@types/node':
         specifier: ^20.19.43
         version: 20.19.43
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
 
   packages/mcp:
     dependencies:
