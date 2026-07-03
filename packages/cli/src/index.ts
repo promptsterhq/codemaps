@@ -18,9 +18,11 @@ import { runImpact, runIndex, runLocate } from "./graph-commands.js";
 import { runInit } from "./init-command.js";
 import { runHook } from "./hook-command.js";
 import { runExplore } from "./explore-command.js";
+import { runSecurity } from "./security-command.js";
 
 type Command =
   | "risk"
+  | "security"
   | "guardrails"
   | "impact"
   | "locate"
@@ -37,6 +39,7 @@ function parse(argv: string[]): { command: Command; rest: string[] } {
   const rest = argv.slice(3);
   switch (cmd) {
     case "risk":
+    case "security":
     case "guardrails":
     case "impact":
     case "locate":
@@ -62,6 +65,8 @@ Usage: codemaps <command>
   risk <path>        How dangerous is this code to touch? (hotspots, churn,
                      ownership, bus-factor — derived from git history)
   guardrails <path>  What must stay true here? (do-not-touch zones, invariants)
+  security <path>    Security-critical surface (beta): guards, auth gates,
+                     injection sinks, secrets, weak crypto
   impact <symbol>    What breaks if I change this? (reverse blast radius)
   locate <query>     Where does this concept live? (symbol/file search)
   index              (Re)build the code graph (.codemaps/graph.json)
@@ -83,6 +88,9 @@ async function main(): Promise<void> {
       break;
     case "guardrails":
       process.exitCode = await runGuardrails(rest);
+      break;
+    case "security":
+      process.exitCode = await runSecurity(rest);
       break;
     case "impact":
       process.exitCode = await runImpact(rest);

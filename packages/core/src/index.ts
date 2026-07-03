@@ -18,5 +18,6 @@ export * from "./repo-indexer.js";
 export * from "./query.js";
 export * from "./agents-md.js";
 export * from "./codemap-store.js";
+export * from "./security.js";
 
 export const CODEMAPS_CORE_VERSION = "0.0.0";

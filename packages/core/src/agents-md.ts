@@ -102,9 +102,18 @@ export function generateAgentsMd(input: AgentsMdInput): string {
     lines.push(`Conditions the code itself asserts must hold. Preserve them unless told otherwise:`);
     lines.push("");
     for (const inv of invariants) {
-      lines.push(`- \`${inv.path}:${inv.line}\` — ${inv.statement.replace(/\s*\[[^\]]+\]$/, "")}`);
+      const secTag = inv.security ? ` **[SECURITY: ${inv.security.category}]**` : "";
+      lines.push(`- \`${inv.path}:${inv.line}\` —${secTag} ${inv.statement.replace(/\s*\[[^\]]+\]$/, "")}`);
+      if (inv.security) lines.push(`  - *Why it matters:* ${inv.security.consequence}`);
     }
     lines.push("");
+    if (invariants.some((i) => i.security)) {
+      lines.push(
+        `**If a request requires weakening a SECURITY-tagged guard, never do it silently:** ` +
+          `name the risk, propose a safe alternative (explicit opt-in, allow-list), and let the user decide.`,
+      );
+      lines.push("");
+    }
   }
 
   // ---- THEN the live tools ------------------------------------------------

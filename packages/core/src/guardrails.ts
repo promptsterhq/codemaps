@@ -20,6 +20,7 @@ import { readFile } from "node:fs/promises";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import type { RepoRiskIndex } from "./risk.js";
+import { scanSecurity, securityEnrichment, type SecurityCategory } from "./security.js";
 
 // ---------------------------------------------------------------------------
 // Model
@@ -47,6 +48,12 @@ export interface GuardrailFinding {
   /** Materiality gate result: anchored to hotspot / single-owner code? */
   material: boolean;
   materialWhy?: string;
+  /**
+   * Security enrichment — the WHY that gives an advisory teeth (born from
+   * benchmark failure sendfile-path: an invariant without a consequence loses
+   * to a direct user instruction).
+   */
+  security?: { category: SecurityCategory; consequence: string };
 }
 
 export interface GuardrailsReport {
@@ -104,6 +111,10 @@ export async function mineGuardrails(
   const rel = normalizeTarget(repoRoot, target);
   const files = await collectFiles(repoRoot, rel);
 
+  // Security surface for the same files — used to enrich invariants with a
+  // category + consequence (and to force materiality: security > cold-code).
+  const security = await scanSecurity(repoRoot, files);
+
   const findings: GuardrailFinding[] = [];
 
   for (const filePath of files) {
@@ -159,7 +170,7 @@ export async function mineGuardrails(
         if (!m) continue;
         const statement = (m[2] ?? m[1] ?? "").trim();
         if (statement.length < 8) continue; // too short to be meaningful
-        findings.push(finalize({
+        const base: GuardrailFinding = {
           kind: "invariant",
           reason: "declared",
           path: filePath,
@@ -169,7 +180,16 @@ export async function mineGuardrails(
           provenance: "mined",
           confidence: rule.confidence,
           material: false,
-        }, riskIndex));
+        };
+        // Security enrichment: attach the consequence and force materiality.
+        const sec = securityEnrichment(base, security);
+        if (sec) {
+          base.security = sec;
+          base.confidence = Math.max(base.confidence, 0.75);
+          base.material = true;
+          base.materialWhy = `security-relevant (${sec.category})`;
+        }
+        findings.push(sec ? base : finalize(base, riskIndex));
         break; // one finding per line
       }
     }

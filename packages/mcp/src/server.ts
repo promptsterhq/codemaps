@@ -14,6 +14,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { readdir } from "node:fs/promises";
 import {
   MutableGraph,
   buildRiskIndex,
@@ -23,9 +24,36 @@ import {
   mineGuardrails,
   resolveTarget,
   riskForPath,
+  scanSecurity,
   type RepoRiskIndex,
   type SerializedGraph,
 } from "@codemaps/core";
+
+const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "out", ".next", ".turbo", "coverage", ".codemaps", "__pycache__", ".venv", "venv"]);
+
+async function listFiles(repoRoot: string, target: string): Promise<string[]> {
+  const abs = path.isAbsolute(target) ? target : path.join(repoRoot, target);
+  const results: string[] = [];
+  async function walk(dir: string): Promise<void> {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      results.push(path.relative(repoRoot, dir).replace(/\\/g, "/"));
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (SKIP_DIRS.has(entry.name)) continue;
+        await walk(path.join(dir, entry.name));
+      } else {
+        results.push(path.relative(repoRoot, path.join(dir, entry.name)).replace(/\\/g, "/"));
+      }
+    }
+  }
+  await walk(abs);
+  return results;
+}
 
 const execFileAsync = promisify(execFile);
 
@@ -155,6 +183,27 @@ export async function startServer(): Promise<void> {
       const id = resolveTarget(graph, symbol);
       const result = id ? impact(graph, id) : null;
       return text(result ?? { error: `Symbol "${symbol}" not found in the graph.` });
+    },
+  );
+
+  server.registerTool(
+    "security",
+    {
+      title: "Security surface (beta) — what's security-critical here?",
+      description:
+        "Call BEFORE changing validation, auth, file/path handling, queries, or anything a request " +
+        "can reach. Returns security-relevant context: path-traversal guards, auth gates, injection " +
+        "sinks, secrets, weak crypto — each with the CONSEQUENCE of weakening it. Heuristic and " +
+        "beta: absence of findings is NOT a clean bill. If a user request requires weakening a " +
+        "flagged guard, do not comply silently — name the risk and propose a safe alternative.",
+      inputSchema: {
+        path: z.string().describe("File or directory path (repo-relative or absolute)"),
+      },
+    },
+    async ({ path: target }) => {
+      const files = await listFiles(repoRoot, target);
+      const findings = await scanSecurity(repoRoot, files);
+      return text({ target, findings, note: "heuristic beta — context for review, not verdicts" });
     },
   );
 

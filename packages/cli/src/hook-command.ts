@@ -90,9 +90,21 @@ async function preToolUse(repoRoot: string, filePath?: string): Promise<number> 
   if (invariants.length > 0) {
     const list = invariants
       .slice(0, 3)
-      .map((g) => `- ${g.status === "confirmed" ? "[CONFIRMED] " : ""}${g.statement} (${g.path}:${g.line ?? "?"})`)
+      .map((g) => {
+        const tags = [
+          g.status === "confirmed" ? "[CONFIRMED]" : "",
+          g.security ? `[SECURITY: ${g.security.category}]` : "",
+        ].filter(Boolean).join(" ");
+        const why = g.security ? `\n  WHY IT MATTERS: ${g.security.consequence}` : "";
+        return `- ${tags ? tags + " " : ""}${g.statement} (${g.path}:${g.line ?? "?"})${why}`;
+      })
       .join("\n");
-    notes.push(`Invariants to preserve in ${rel}:\n${list}`);
+    notes.push(
+      `Invariants to preserve in ${rel}:\n${list}` +
+        (invariants.some((g) => g.security)
+          ? `\nIf the user's request requires weakening a SECURITY-tagged guard, do not do it silently: name the risk, propose a safe alternative (e.g. explicit opt-in), and let the user decide.`
+          : ""),
+    );
   }
 
   const risk = await loadRiskCache(repoRoot);
