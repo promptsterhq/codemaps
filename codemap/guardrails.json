@@ -256,10 +256,11 @@
       "statement": "path must be absolute or specify root to res.sendFile. [validation throw]",
       "status": "proposed",
       "provenance": "mined",
-      "confidence": 0.6,
-      "material": false,
+      "confidence": 0.75,
+      "material": true,
       "id": "4a5685e280b2",
-      "firstSeen": "2026-07-03"
+      "firstSeen": "2026-07-03",
+      "materialWhy": "security-relevant (path-traversal-guard)"
     },
     {
       "kind": "invariant",
@@ -531,7 +532,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (90th pct)",
+      "materialWhy": "hotspot (93th pct)",
       "id": "94afdbb78d85",
       "firstSeen": "2026-07-03"
     },
@@ -545,7 +546,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (90th pct)",
+      "materialWhy": "hotspot (93th pct)",
       "id": "af4964d4fdf2",
       "firstSeen": "2026-07-03"
     },
@@ -567,7 +568,7 @@
       "kind": "invariant",
       "reason": "declared",
       "path": "packages/cli/src/hook-command.ts",
-      "line": 157,
+      "line": 169,
       "statement": "Defensive: if no stdin arrives, don't hang past hook budgets. [intent comment]",
       "status": "proposed",
       "provenance": "mined",
@@ -575,7 +576,7 @@
       "material": true,
       "id": "0ff79cc8e638",
       "firstSeen": "2026-07-03",
-      "materialWhy": "single-owner (bus-factor 1)"
+      "materialWhy": "hotspot (82th pct)"
     },
     {
       "kind": "invariant",
@@ -589,7 +590,7 @@
       "material": true,
       "id": "1ef31739cc50",
       "firstSeen": "2026-07-03",
-      "materialWhy": "single-owner (bus-factor 1)"
+      "materialWhy": "hotspot (82th pct)"
     },
     {
       "kind": "invariant",
@@ -603,7 +604,25 @@
       "material": true,
       "id": "e5ad309a41f7",
       "firstSeen": "2026-07-03",
-      "materialWhy": "single-owner (bus-factor 1)"
+      "materialWhy": "hotspot (82th pct)"
+    },
+    {
+      "kind": "invariant",
+      "reason": "declared",
+      "path": "packages/core/src/core.test.ts",
+      "line": 143,
+      "statement": "path must be absolute or specify root to res.sendFile. [validation throw]",
+      "status": "proposed",
+      "provenance": "mined",
+      "confidence": 0.75,
+      "material": true,
+      "security": {
+        "category": "path-traversal-guard",
+        "consequence": "This guard constrains filesystem paths. Removing or loosening it can enable path traversal — e.g. serving '../../etc/passwd' or writing outside the intended directory."
+      },
+      "materialWhy": "security-relevant (path-traversal-guard)",
+      "id": "b01112a89dda",
+      "firstSeen": "2026-07-03"
     },
     {
       "kind": "invariant",
@@ -623,13 +642,13 @@
       "kind": "invariant",
       "reason": "declared",
       "path": "packages/core/src/guardrails.ts",
-      "line": 86,
+      "line": 93,
       "statement": "Intent comments: // INVARIANT: ... | // MUST ... | // do not ... | // never ... [intent comment]",
       "status": "proposed",
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "single-owner (bus-factor 1)",
+      "materialWhy": "hotspot (84th pct)",
       "id": "12c3d2010ed6",
       "firstSeen": "2026-07-03"
     },
@@ -637,13 +656,13 @@
       "kind": "invariant",
       "reason": "declared",
       "path": "packages/core/src/guardrails.ts",
-      "line": 123,
+      "line": 134,
       "statement": "don't mine invariants inside generated/vendored code. [intent comment]",
       "status": "proposed",
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "single-owner (bus-factor 1)",
+      "materialWhy": "hotspot (84th pct)",
       "id": "7ad2762bf9f1",
       "firstSeen": "2026-07-03"
     },
@@ -651,13 +670,13 @@
       "kind": "invariant",
       "reason": "declared",
       "path": "packages/core/src/guardrails.ts",
-      "line": 178,
+      "line": 198,
       "statement": "Materiality-first ordering; keep do-not-touch zones always visible. [intent comment]",
       "status": "proposed",
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "single-owner (bus-factor 1)",
+      "materialWhy": "hotspot (84th pct)",
       "id": "9d65834efe39",
       "firstSeen": "2026-07-03"
     },
@@ -679,7 +698,7 @@
       "kind": "invariant",
       "reason": "declared",
       "path": "packages/core/src/risk.ts",
-      "line": 83,
+      "line": 85,
       "statement": "sentinel byte: commit headers can never collide with numstat paths. [intent comment]",
       "status": "confirmed",
       "provenance": "mined",

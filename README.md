@@ -28,21 +28,32 @@ Codemaps answers the questions a senior/principal/security engineer needs to cha
 
 ## Status
 
-Working pre-alpha — Phase 0 complete, Phase 1 in progress. What works today:
+Working pre-alpha — **all six lenses live, end-to-end locally testable.**
 
 ```bash
+# one-time setup from a clone:
+pnpm install && pnpm build
+cd packages/cli && npm link       # puts `codemaps` on your PATH
+
+# then in any TS/Python git repo:
 codemaps init            # risk + guardrails + graph + AGENTS.md (+ CLAUDE.md bridge)
-codemaps risk <path>     # hotspot pct, churn, owners, bus-factor + "slow down" warnings
+codemaps orient          # what is this system? components, entry points, comms
+codemaps risk <path>     # hotspot pct, churn, owners, bus-factor, coverage + warnings
 codemaps guardrails <p>  # do-not-touch zones + mined invariants (materiality-gated)
 codemaps guardrails confirm <id>   # promote to human-confirmed (durable, versioned in codemap/)
+codemaps security <path> # (beta) traversal guards, auth gates, sinks, secrets — with consequences
 codemaps impact <symbol> # reverse blast radius + affected tests (TS + Python)
 codemaps locate <query>  # ranked symbol/file search
-codemaps serve           # MCP server: risk/guardrails/impact/locate for any MCP agent
+codemaps serve           # MCP server: all six lenses for any MCP agent
+codemaps explore         # localhost dashboard: risk table, guardrail confirm/reject, impact search
 codemaps init --hooks    # PreToolUse hook: warns on hotspots/invariants,
                          # blocks only human-CONFIRMED do-not-touch zones
+
+# verify everything in one shot:
+./scripts/e2e-smoke.sh          # 13 checks: build, tests, lenses, MCP, hook, explorer
 ```
 
-First benchmark result (same model, same prompt, lockfile trap): the baseline agent hand-edited `pnpm-lock.yaml`; with Codemaps context it refused, cited the guardrail, and finished 2× faster. Harness + tasks in [`bench/`](bench/).
+**Benchmark evidence** (same model, same prompt; [`bench/ANALYSIS.md`](bench/ANALYSIS.md)): on the lockfile trap the baseline agent hand-edited `pnpm-lock.yaml` while the Codemaps arm refused, cited the guardrail, and finished 2× faster. On the security trap both arms initially removed a path-traversal guard — which drove the Security lens (consequence-enriched invariants); on re-run the agent flagged the risk, named the `../../etc/passwd` attack, and proposed a safe alternative. **2/6 violations avoided, 0 regressions, n=1 per cell (early).**
 
 See [`docs/VISION.md`](docs/VISION.md) for the plan, [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md) for the defensible layers, and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the market/technical grounding (incl. the 2026 competitive re-scan).
 

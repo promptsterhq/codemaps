@@ -307,10 +307,13 @@ export function toRiskCache(index: RepoRiskIndex): RiskCache {
 
 export function riskForPath(index: RepoRiskIndex, target: string): RiskReport | null {
   const rel = normalizeTarget(index.repoRoot, target);
-  const exact = index.files.get(rel);
-  const files = exact
-    ? [exact]
-    : [...index.files.values()].filter((f) => f.path.startsWith(rel.endsWith("/") ? rel : rel + "/"));
+  const wholeRepo = rel === "" || rel === "." || rel === "./";
+  const exact = wholeRepo ? undefined : index.files.get(rel);
+  const files = wholeRepo
+    ? [...index.files.values()]
+    : exact
+      ? [exact]
+      : [...index.files.values()].filter((f) => f.path.startsWith(rel.endsWith("/") ? rel : rel + "/"));
 
   if (files.length === 0) return null;
 
@@ -371,7 +374,7 @@ export function riskForPath(index: RepoRiskIndex, target: string): RiskReport | 
   }
 
   return {
-    target: rel,
+    target: rel === "" ? "." : rel,
     kind: exact ? "file" : "directory",
     files: files.sort((a, b) => b.hotspotPercentile - a.hotspotPercentile),
     summary: { commits, churn: { added, deleted }, hotspotPercentile, busFactor, topOwners },
