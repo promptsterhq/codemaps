@@ -19,9 +19,11 @@ import { runInit } from "./init-command.js";
 import { runHook } from "./hook-command.js";
 import { runExplore } from "./explore-command.js";
 import { runSecurity } from "./security-command.js";
+import { runOrient } from "./orient-command.js";
 
 type Command =
   | "risk"
+  | "orient"
   | "security"
   | "guardrails"
   | "impact"
@@ -39,6 +41,7 @@ function parse(argv: string[]): { command: Command; rest: string[] } {
   const rest = argv.slice(3);
   switch (cmd) {
     case "risk":
+    case "orient":
     case "security":
     case "guardrails":
     case "impact":
@@ -62,6 +65,7 @@ const HELP = `codemaps — local-first intent & risk layer for AI coding agents
 
 Usage: codemaps <command>
 
+  orient             What is this system? (components, entry points, comms)
   risk <path>        How dangerous is this code to touch? (hotspots, churn,
                      ownership, bus-factor — derived from git history)
   guardrails <path>  What must stay true here? (do-not-touch zones, invariants)
@@ -91,6 +95,9 @@ async function main(): Promise<void> {
       break;
     case "security":
       process.exitCode = await runSecurity(rest);
+      break;
+    case "orient":
+      process.exitCode = await runOrient(rest);
       break;
     case "impact":
       process.exitCode = await runImpact(rest);

@@ -1,10 +1,9 @@
 /**
- * Codemaps MCP server (stdio) — Phase 0 step 4.
- *
- * Exposes the working lenses as agent-callable tools. Tool descriptions lead
- * with the moat (risk/guardrails) and tell the agent WHEN to call them: before
- * editing. Orient/Security land in Phase 1 and are intentionally absent rather
- * than stubbed — an agent must never see a tool that returns fabricated data.
+ * Codemaps MCP server (stdio) — all six lenses as agent-callable tools:
+ * orient, locate, impact (substrate) + guardrails, risk, security (the moat).
+ * Tool descriptions lead with WHEN to call (before editing) and how much to
+ * trust results (floor-not-ceiling, proposed-vs-confirmed, beta labels).
+ * No tool ever returns fabricated data.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -25,6 +24,7 @@ import {
   resolveTarget,
   riskForPath,
   scanSecurity,
+  orient,
   type RepoRiskIndex,
   type SerializedGraph,
 } from "@codemaps/core";
@@ -122,6 +122,19 @@ export async function startServer(): Promise<void> {
   const engine = new Engine(repoRoot);
 
   const server = new McpServer({ name: "codemaps", version: "0.0.0" });
+
+  server.registerTool(
+    "orient",
+    {
+      title: "Orient — what is this system?",
+      description:
+        "Call FIRST in an unfamiliar repo. Returns the top-down frame agents otherwise lack: " +
+        "components and their responsibilities, entry points, and how parts communicate " +
+        "(rest/grpc/graphql/queue/db) — derived from workspace and package manifests.",
+      inputSchema: {},
+    },
+    async () => text(await orient(repoRoot)),
+  );
 
   server.registerTool(
     "risk",
