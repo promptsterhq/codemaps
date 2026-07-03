@@ -15,6 +15,7 @@ import { CODEMAPS_CORE_VERSION } from "@codemaps/core";
 import { runRisk } from "./risk-command.js";
 import { runGuardrails } from "./guardrails-command.js";
 import { runImpact, runIndex, runLocate } from "./graph-commands.js";
+import { runInit } from "./init-command.js";
 
 type Command =
   | "risk"
@@ -89,7 +90,14 @@ async function main(): Promise<void> {
       process.exitCode = await runIndex();
       break;
     case "init":
-    case "serve":
+      process.exitCode = await runInit(rest);
+      break;
+    case "serve": {
+      const { startServer } = await import("@codemaps/mcp");
+      await startServer();
+      // stdio server stays alive until the client disconnects.
+      break;
+    }
     case "explore":
       console.log(`[codemaps] "${command}" is not implemented yet (Phase 0 in progress).`);
       break;

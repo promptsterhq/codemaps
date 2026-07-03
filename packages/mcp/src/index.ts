@@ -9,6 +9,8 @@
 
 import type { LensName } from "@codemaps/core";
 
+export { startServer } from "./server.js";
+
 export interface ToolDescriptor {
   name: LensName;
   title: string;

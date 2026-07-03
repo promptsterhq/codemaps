@@ -6,14 +6,17 @@
   "bin": {
     "codemaps": "./dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@codemaps/core": "workspace:*"
+    "@codemaps/core": "workspace:*",
+    "@codemaps/mcp": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.16.0",
