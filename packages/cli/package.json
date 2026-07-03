@@ -1,0 +1,22 @@
+{
+  "name": "@codemaps/cli",
+  "version": "0.0.0",
+  "description": "Codemaps CLI — npx codemaps: index a repo, generate AGENTS.md, serve context to agents.",
+  "type": "module",
+  "bin": {
+    "codemaps": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@codemaps/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "typescript": "^5.6.3"
+  }
+}

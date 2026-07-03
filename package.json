@@ -1,0 +1,21 @@
+{
+  "name": "codemaps",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local-first context engine that maps repositories for AI coding agents.",
+  "packageManager": "pnpm@10.34.4",
+  "engines": {
+    "node": ">=18.18"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3"
+  }
+}
