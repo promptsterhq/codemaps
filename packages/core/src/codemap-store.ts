@@ -92,6 +92,26 @@ export function mergeFindings(
   return { added, refreshed, kept };
 }
 
+/**
+ * Prune stale proposals within a mined scope: a `proposed` record whose path is
+ * inside the scope but which the fresh mine did not produce is gone (file
+ * deleted, now gitignored, or pattern changed) — drop it. Human-decided
+ * records are NEVER pruned (durable by rule). Returns count removed.
+ */
+export function pruneStaleProposals(
+  file: CodemapFile,
+  scope: string,
+  minedIds: Set<string>,
+): number {
+  const inScope = (p: string): boolean =>
+    scope === "" || scope === "." || p === scope || p.startsWith(scope.endsWith("/") ? scope : scope + "/");
+  const before = file.guardrails.length;
+  file.guardrails = file.guardrails.filter(
+    (g) => g.status !== "proposed" || !inScope(g.path) || minedIds.has(g.id),
+  );
+  return before - file.guardrails.length;
+}
+
 /** Promote/demote by id (or unambiguous id prefix). Returns the record or an error string. */
 export function decide(
   file: CodemapFile,

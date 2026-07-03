@@ -13,6 +13,8 @@ import {
   indexRepo,
   loadCodemap,
   mergeFindings,
+  guardrailId,
+  pruneStaleProposals,
   mineGuardrails,
   saveCodemap,
   toRiskCache,
@@ -43,11 +45,13 @@ export async function runInit(args: string[]): Promise<number> {
   );
   console.log(`  ✓ risk        ${riskIndex.files.size} file(s) from ${riskIndex.totalCommits} commits (+ hook cache)`);
 
-  // 2. Guardrails (materiality-gated by risk), synced into codemap/.
+  // 2. Guardrails (materiality-gated by risk), synced into codemap/;
+  //    stale proposals pruned repo-wide, human decisions kept.
   const guardrails = await mineGuardrails(repoRoot, ".", riskIndex);
   const codemap = await loadCodemap(repoRoot);
-  const counts = mergeFindings(codemap, [...guardrails.findings, ...guardrails.suppressed],
-    new Date().toISOString().slice(0, 10));
+  const mined = [...guardrails.findings, ...guardrails.suppressed];
+  const counts = mergeFindings(codemap, mined, new Date().toISOString().slice(0, 10));
+  pruneStaleProposals(codemap, ".", new Set(mined.map(guardrailId)));
   await saveCodemap(repoRoot, codemap);
   const zones = guardrails.findings.filter((f) => f.kind === "do-not-touch").length;
   const invariants = guardrails.findings.filter((f) => f.kind === "invariant").length;
@@ -56,10 +60,13 @@ export async function runInit(args: string[]): Promise<number> {
       `(codemap/guardrails.json: +${counts.added} new, ${counts.kept} human-decided kept)`,
   );
 
-  // 3. Thin graph (table stakes).
+  // 3. Thin graph (table stakes) — HEAD-stamped for freshness checks.
   const idx = await indexRepo(repoRoot);
+  const head = await execFileAsync("git", ["-C", repoRoot, "rev-parse", "HEAD"])
+    .then((r) => r.stdout.trim())
+    .catch(() => undefined);
   await mkdir(path.join(repoRoot, ".codemaps"), { recursive: true });
-  await writeFile(path.join(repoRoot, ".codemaps", "graph.json"), JSON.stringify(idx.graph.toJSON()));
+  await writeFile(path.join(repoRoot, ".codemaps", "graph.json"), JSON.stringify(idx.graph.toJSON(head)));
   console.log(`  ✓ graph       ${idx.symbolCount} symbols, ${idx.edgeCount} edges -> .codemaps/graph.json`);
 
   // 4. AGENTS.md — refuse to clobber a hand-written one without --force.

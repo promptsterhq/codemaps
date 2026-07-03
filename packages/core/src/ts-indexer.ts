@@ -8,12 +8,10 @@
  */
 
 import ts from "typescript";
-import { readdir } from "node:fs/promises";
 import path from "node:path";
 import type { GraphNode, NodeId } from "./graph.js";
 import { MutableGraph } from "./store.js";
-
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "out", ".next", ".turbo", "coverage", ".codemaps"]);
+import { listRepoFiles } from "./files.js";
 
 export interface IndexResult {
   graph: MutableGraph;
@@ -174,23 +172,9 @@ function enclosingSymbolId(
 }
 
 async function collectTsFiles(repoRoot: string): Promise<string[]> {
-  const results: string[] = [];
-  async function walk(dir: string): Promise<void> {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
-        await walk(path.join(dir, entry.name));
-      } else if (/\.(ts|tsx|mts|cts)$/.test(entry.name) && !entry.name.endsWith(".d.ts")) {
-        results.push(path.join(dir, entry.name));
-      }
-    }
-  }
-  await walk(repoRoot);
-  return results;
+  // gitignore-respecting enumeration; absolute paths for the compiler host.
+  const files = await listRepoFiles(repoRoot);
+  return files
+    .filter((f) => /\.(ts|tsx|mts|cts)$/.test(f) && !f.endsWith(".d.ts"))
+    .map((f) => path.join(repoRoot, f));
 }

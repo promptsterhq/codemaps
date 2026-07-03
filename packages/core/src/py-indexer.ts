@@ -9,17 +9,13 @@
  * heuristic; we keep precision over recall and stay honest about it.
  */
 
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import type { GraphEdge, GraphNode, NodeId } from "./graph.js";
+import { listRepoFiles } from "./files.js";
 
 const require = createRequire(import.meta.url);
-
-const SKIP_DIRS = new Set([
-  "node_modules", ".git", "dist", "build", "out", ".next", ".turbo", "coverage",
-  ".codemaps", "__pycache__", ".venv", "venv", "env", "site-packages", ".tox", ".mypy_cache",
-]);
 
 export interface PyIndexResult {
   nodes: GraphNode[];
@@ -165,23 +161,7 @@ function resolveModule(repoRoot: string, importerAbs: string, moduleText: string
 }
 
 async function collectPyFiles(repoRoot: string): Promise<string[]> {
-  const results: string[] = [];
-  async function walk(dir: string): Promise<void> {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
-        await walk(path.join(dir, entry.name));
-      } else if (entry.name.endsWith(".py")) {
-        results.push(path.join(dir, entry.name));
-      }
-    }
-  }
-  await walk(repoRoot);
-  return results;
+  // gitignore-respecting enumeration; absolute paths for parsing.
+  const files = await listRepoFiles(repoRoot);
+  return files.filter((f) => f.endsWith(".py")).map((f) => path.join(repoRoot, f));
 }

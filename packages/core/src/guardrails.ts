@@ -17,7 +17,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { readdir } from "node:fs/promises";
+import { listRepoFiles } from "./files.js";
 import path from "node:path";
 import type { RepoRiskIndex } from "./risk.js";
 import { scanSecurity, securityEnrichment, type SecurityCategory } from "./security.js";
@@ -97,7 +97,6 @@ const INVARIANT_PATTERNS: { pattern: RegExp; confidence: number; label: string }
 /** Extensions worth mining for invariants (source code, not data/markup). */
 const MINEABLE = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".go", ".rb", ".java", ".rs", ".cs"]);
 
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "out", ".next", ".turbo", "coverage", ".codemaps"]);
 
 // ---------------------------------------------------------------------------
 // Analysis
@@ -109,7 +108,8 @@ export async function mineGuardrails(
   riskIndex?: RepoRiskIndex,
 ): Promise<GuardrailsReport> {
   const rel = normalizeTarget(repoRoot, target);
-  const files = await collectFiles(repoRoot, rel);
+  // git ls-files based: respects .gitignore (vendored fixtures are not "our code").
+  const files = await listRepoFiles(repoRoot, rel);
 
   // Security surface for the same files — used to enrich invariants with a
   // category + consequence (and to force materiality: security > cold-code).
@@ -219,36 +219,6 @@ function finalize(f: GuardrailFinding, riskIndex?: RepoRiskIndex): GuardrailFind
   return f;
 }
 
-// ---------------------------------------------------------------------------
-// FS walk
-// ---------------------------------------------------------------------------
-
-async function collectFiles(repoRoot: string, rel: string): Promise<string[]> {
-  const abs = path.join(repoRoot, rel);
-  const results: string[] = [];
-
-  async function walk(dir: string): Promise<void> {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      // Not a directory — treat as a single file.
-      results.push(path.relative(repoRoot, dir).replace(/\\/g, "/"));
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
-        await walk(path.join(dir, entry.name));
-      } else {
-        results.push(path.relative(repoRoot, path.join(dir, entry.name)).replace(/\\/g, "/"));
-      }
-    }
-  }
-
-  await walk(abs);
-  return results;
-}
 
 function normalizeTarget(repoRoot: string, target: string): string {
   const abs = path.isAbsolute(target) ? target : path.resolve(process.cwd(), target);

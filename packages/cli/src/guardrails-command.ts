@@ -17,6 +17,7 @@ import {
   loadCodemap,
   mergeFindings,
   mineGuardrails,
+  pruneStaleProposals,
   saveCodemap,
   type StoredGuardrail,
 } from "@codemaps/core";
@@ -88,10 +89,12 @@ async function runMine(args: string[], target: string): Promise<number> {
   const riskIndex = await buildRiskIndex(root).catch(() => undefined);
   const report = await mineGuardrails(root, target, riskIndex);
 
-  // Sync into the versioned store; human decisions survive re-mining.
+  // Sync into the versioned store; human decisions survive re-mining;
+  // stale proposals within the mined scope are pruned.
   const codemap = await loadCodemap(root);
-  const counts = mergeFindings(codemap, [...report.findings, ...report.suppressed],
-    new Date().toISOString().slice(0, 10));
+  const mined = [...report.findings, ...report.suppressed];
+  const counts = mergeFindings(codemap, mined, new Date().toISOString().slice(0, 10));
+  const pruned = pruneStaleProposals(codemap, report.target, new Set(mined.map(guardrailId)));
   await saveCodemap(root, codemap);
 
   // Display from the STORE (so confirmed/rejected status shows), scoped to target.
@@ -101,18 +104,18 @@ async function runMine(args: string[], target: string): Promise<number> {
   );
 
   if (json) {
-    console.log(JSON.stringify({ target: report.target, guardrails: inScope, sync: counts }, null, 2));
+    console.log(JSON.stringify({ target: report.target, guardrails: inScope, sync: { ...counts, pruned } }, null, 2));
     return 0;
   }
 
-  printHuman(report.target, inScope, counts);
+  printHuman(report.target, inScope, { ...counts, pruned });
   return 0;
 }
 
 function printHuman(
   target: string,
   guardrails: StoredGuardrail[],
-  counts: { added: number; refreshed: number; kept: number },
+  counts: { added: number; refreshed: number; kept: number; pruned: number },
 ): void {
   const zones = guardrails.filter((g) => g.kind === "do-not-touch");
   const confirmed = guardrails.filter((g) => g.kind === "invariant" && g.status === "confirmed");
@@ -162,6 +165,7 @@ function printHuman(
 
   console.log(
     `\n   sync: +${counts.added} new, ${counts.refreshed} refreshed, ${counts.kept} human-decided kept` +
+      `${counts.pruned > 0 ? `, ${counts.pruned} stale pruned` : ""}` +
       `\n   Promote with: codemaps guardrails confirm <id>   (or reject <id>)\n`,
   );
 }

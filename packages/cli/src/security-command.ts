@@ -6,12 +6,9 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readdir } from "node:fs/promises";
-import path from "node:path";
-import { scanSecurity, type SecurityFinding } from "@codemaps/core";
+import { listRepoFiles, scanSecurity, type SecurityFinding } from "@codemaps/core";
 
 const execFileAsync = promisify(execFile);
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "out", ".next", ".turbo", "coverage", ".codemaps", "__pycache__", ".venv", "venv"]);
 
 export async function runSecurity(args: string[]): Promise<number> {
   const json = args.includes("--json");
@@ -26,7 +23,7 @@ export async function runSecurity(args: string[]): Promise<number> {
     return 1;
   }
 
-  const files = await collect(repoRoot, target);
+  const files = await listRepoFiles(repoRoot, target);
   const findings = await scanSecurity(repoRoot, files);
 
   if (json) {
@@ -62,27 +59,3 @@ export async function runSecurity(args: string[]): Promise<number> {
   return 0;
 }
 
-async function collect(repoRoot: string, target: string): Promise<string[]> {
-  const abs = path.isAbsolute(target) ? target : path.resolve(process.cwd(), target);
-  const base = path.relative(repoRoot, abs).replace(/\\/g, "/") || ".";
-  const results: string[] = [];
-  async function walk(dir: string): Promise<void> {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      results.push(path.relative(repoRoot, dir).replace(/\\/g, "/"));
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
-        await walk(path.join(dir, entry.name));
-      } else {
-        results.push(path.relative(repoRoot, path.join(dir, entry.name)).replace(/\\/g, "/"));
-      }
-    }
-  }
-  await walk(base === "." ? repoRoot : path.join(repoRoot, base));
-  return results;
-}

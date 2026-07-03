@@ -13,7 +13,6 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { readdir } from "node:fs/promises";
 import {
   MutableGraph,
   buildRiskIndex,
@@ -24,36 +23,12 @@ import {
   resolveTarget,
   riskForPath,
   scanSecurity,
+  listRepoFiles,
   orient,
   type RepoRiskIndex,
   type SerializedGraph,
 } from "@codemaps/core";
 
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "out", ".next", ".turbo", "coverage", ".codemaps", "__pycache__", ".venv", "venv"]);
-
-async function listFiles(repoRoot: string, target: string): Promise<string[]> {
-  const abs = path.isAbsolute(target) ? target : path.join(repoRoot, target);
-  const results: string[] = [];
-  async function walk(dir: string): Promise<void> {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      results.push(path.relative(repoRoot, dir).replace(/\\/g, "/"));
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
-        await walk(path.join(dir, entry.name));
-      } else {
-        results.push(path.relative(repoRoot, path.join(dir, entry.name)).replace(/\\/g, "/"));
-      }
-    }
-  }
-  await walk(abs);
-  return results;
-}
 
 const execFileAsync = promisify(execFile);
 
@@ -214,7 +189,7 @@ export async function startServer(): Promise<void> {
       },
     },
     async ({ path: target }) => {
-      const files = await listFiles(repoRoot, target);
+      const files = await listRepoFiles(repoRoot, target);
       const findings = await scanSecurity(repoRoot, files);
       return text({ target, findings, note: "heuristic beta — context for review, not verdicts" });
     },
