@@ -14,8 +14,19 @@
 import { CODEMAPS_CORE_VERSION } from "@codemaps/core";
 import { runRisk } from "./risk-command.js";
 import { runGuardrails } from "./guardrails-command.js";
+import { runImpact, runIndex, runLocate } from "./graph-commands.js";
 
-type Command = "risk" | "guardrails" | "init" | "index" | "serve" | "explore" | "help" | "version";
+type Command =
+  | "risk"
+  | "guardrails"
+  | "impact"
+  | "locate"
+  | "init"
+  | "index"
+  | "serve"
+  | "explore"
+  | "help"
+  | "version";
 
 function parse(argv: string[]): { command: Command; rest: string[] } {
   const cmd = argv[2];
@@ -23,6 +34,8 @@ function parse(argv: string[]): { command: Command; rest: string[] } {
   switch (cmd) {
     case "risk":
     case "guardrails":
+    case "impact":
+    case "locate":
     case "init":
     case "index":
     case "serve":
@@ -44,8 +57,10 @@ Usage: codemaps <command>
   risk <path>        How dangerous is this code to touch? (hotspots, churn,
                      ownership, bus-factor — derived from git history)
   guardrails <path>  What must stay true here? (do-not-touch zones, invariants)
+  impact <symbol>    What breaks if I change this? (reverse blast radius)
+  locate <query>     Where does this concept live? (symbol/file search)
+  index              (Re)build the code graph (.codemaps/graph.json)
   init               Index the repo, generate AGENTS.md, register the MCP server
-  index              (Re)build the code graph
   serve              Start the local MCP server (agents query the six lenses)
   explore            Open the visual explorer (coming in Phase 1)
   version            Print version
@@ -64,8 +79,16 @@ async function main(): Promise<void> {
     case "guardrails":
       process.exitCode = await runGuardrails(rest);
       break;
-    case "init":
+    case "impact":
+      process.exitCode = await runImpact(rest);
+      break;
+    case "locate":
+      process.exitCode = await runLocate(rest);
+      break;
     case "index":
+      process.exitCode = await runIndex();
+      break;
+    case "init":
     case "serve":
     case "explore":
       console.log(`[codemaps] "${command}" is not implemented yet (Phase 0 in progress).`);
