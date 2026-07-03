@@ -26,3 +26,5 @@ coverage/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+bench/results/
+bench/repos/
