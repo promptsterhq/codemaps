@@ -34,28 +34,52 @@ async function detectRepoRoot(): Promise<string> {
   return stdout.trim();
 }
 
-/** Lazily-built, cached per-process state. Phase 1 adds file-watch freshness. */
+/**
+ * Lazily-built, HEAD-pinned state. Every access revalidates against git HEAD:
+ * when the repo moves, caches rebuild — the server never serves a stale answer
+ * (freshness by construction, VISION §2.2). Rebuilds are sub-second.
+ */
 class Engine {
   private riskIndex?: Promise<RepoRiskIndex>;
   private graph?: Promise<MutableGraph>;
+  private pinnedHead?: string;
 
   constructor(readonly repoRoot: string) {}
 
-  risk(): Promise<RepoRiskIndex> {
+  private async revalidate(): Promise<void> {
+    let head: string | undefined;
+    try {
+      const { stdout } = await execFileAsync("git", ["-C", this.repoRoot, "rev-parse", "HEAD"]);
+      head = stdout.trim();
+    } catch {
+      return; // no git — nothing to pin against
+    }
+    if (this.pinnedHead !== head) {
+      this.pinnedHead = head;
+      this.riskIndex = undefined;
+      this.graph = undefined;
+    }
+  }
+
+  async risk(): Promise<RepoRiskIndex> {
+    await this.revalidate();
     this.riskIndex ??= buildRiskIndex(this.repoRoot);
     return this.riskIndex;
   }
 
-  codeGraph(): Promise<MutableGraph> {
+  async codeGraph(): Promise<MutableGraph> {
+    await this.revalidate();
     this.graph ??= (async () => {
-      // Prefer the persisted graph; rebuild if absent.
+      // Prefer the persisted graph if it matches HEAD; otherwise rebuild.
       try {
         const raw = await readFile(path.join(this.repoRoot, ".codemaps", "graph.json"), "utf8");
-        return MutableGraph.fromJSON(JSON.parse(raw) as SerializedGraph);
+        const data = JSON.parse(raw) as SerializedGraph;
+        if (!data.head || data.head === this.pinnedHead) return MutableGraph.fromJSON(data);
       } catch {
-        const result = await indexRepo(this.repoRoot);
-        return result.graph;
+        /* fall through to rebuild */
       }
+      const result = await indexRepo(this.repoRoot);
+      return result.graph;
     })();
     return this.graph;
   }

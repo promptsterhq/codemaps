@@ -30,6 +30,15 @@ async function repoRoot(): Promise<string | null> {
 
 const graphPath = (root: string): string => path.join(root, ".codemaps", "graph.json");
 
+async function currentHead(root: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFileAsync("git", ["-C", root, "rev-parse", "HEAD"]);
+    return stdout.trim();
+  } catch {
+    return undefined;
+  }
+}
+
 export async function runIndex(): Promise<number> {
   const root = await repoRoot();
   if (!root) {
@@ -39,7 +48,7 @@ export async function runIndex(): Promise<number> {
   const started = Date.now();
   const result = await indexRepo(root);
   await mkdir(path.dirname(graphPath(root)), { recursive: true });
-  await writeFile(graphPath(root), JSON.stringify(result.graph.toJSON()));
+  await writeFile(graphPath(root), JSON.stringify(result.graph.toJSON(await currentHead(root))));
   console.log(
     `[codemaps] indexed ${result.fileCount} file(s): ${result.symbolCount} symbols, ` +
       `${result.edgeCount} edges in ${((Date.now() - started) / 1000).toFixed(1)}s -> .codemaps/graph.json`,
@@ -47,10 +56,23 @@ export async function runIndex(): Promise<number> {
   return 0;
 }
 
+/**
+ * Load the persisted graph — but never serve a stale one: if HEAD has moved
+ * since it was built, rebuild automatically (indexing is sub-second; a stale
+ * map is worse than none, VISION §2.2).
+ */
 export async function loadGraph(root: string): Promise<MutableGraph | null> {
   try {
     const raw = await readFile(graphPath(root), "utf8");
-    return MutableGraph.fromJSON(JSON.parse(raw) as SerializedGraph);
+    const data = JSON.parse(raw) as SerializedGraph;
+    const head = await currentHead(root);
+    if (data.head && head && data.head !== head) {
+      console.error(`[codemaps] graph is stale (HEAD moved) — re-indexing…`);
+      await runIndex();
+      const fresh = JSON.parse(await readFile(graphPath(root), "utf8")) as SerializedGraph;
+      return MutableGraph.fromJSON(fresh);
+    }
+    return MutableGraph.fromJSON(data);
   } catch {
     return null;
   }
