@@ -4,6 +4,8 @@
 
 AI agents fail most often not because the model is weak, but because they lack context: they hallucinate APIs, edit the wrong layer, break invariants, and don't know what's load-bearing. "Missing context" is the #1 agent failure mode (~60–65% of developers report it). Codemaps is the missing context layer.
 
+Code-graph-over-MCP (callers, imports, blast radius) commoditized in 2026 — several great free tools now ship it. Codemaps stands *on top of* that commodity graph and adds the judgment layer nobody else does: **what must stay true here (Guardrails), where it's fragile (Risk), and the security-critical surface (Security)** — the questions today's models are worst at answering unaided.
+
 Unlike cloud, embedding-based tools, Codemaps is:
 
 - **Precise, not fuzzy** — a deterministic code graph (tree-sitter → SQLite), so agents get *certainty* on callers and blast radius, not "chunks that look similar."
@@ -26,7 +28,7 @@ Codemaps answers the questions a senior/principal/security engineer needs to cha
 
 ## Status
 
-Early / pre-alpha. Building the Phase 0 spike: a TypeScript + Python code graph with `impact()` and `locate()` over MCP, plus `AGENTS.md` generation. See [`docs/VISION.md`](docs/VISION.md) for the full plan and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the market/technical grounding.
+Early / pre-alpha. Phase 0 builds a *thin* TS/Python graph (just enough scaffolding for `impact()`/`locate()`) and leads with the differentiated layer: a first Guardrails slice + an evaluation benchmark proving fewer bad edits vs. commodity graph + grep. See [`docs/VISION.md`](docs/VISION.md) for the plan, [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md) for the defensible layers, and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the market/technical grounding (incl. the 2026 competitive re-scan).
 
 ## Repo layout
 
