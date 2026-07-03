@@ -1,0 +1,48 @@
+# Codemaps check — GitHub Action
+# Runs `codemaps check` on a PR diff: fails only when a human-CONFIRMED
+# do-not-touch zone was edited; guarded-line / security-surface / hotspot
+# findings are advisory and land in the job summary.
+#
+# Usage (in any repo once codemaps is published; today via `uses: <this repo>@main`):
+#   - uses: actions/checkout@v4
+#     with: { fetch-depth: 0 }   # full history: risk lens needs it
+#   - uses: jeffs-org/codemaps@main   # placeholder org until npm publish
+#     with:
+#       base: ${{ github.base_ref || 'main' }}
+
+name: "Codemaps check"
+description: "Risk, guardrail, and security-surface gate for PR diffs — the context layer for AI agents, as a CI check."
+branding:
+  icon: "map"
+  color: "orange"
+
+inputs:
+  base:
+    description: "Base ref to diff against (PR base branch)"
+    required: false
+    default: "main"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
+    - name: Setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Build codemaps
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: pnpm install --frozen-lockfile && pnpm build
+
+    - name: Run codemaps check
+      shell: bash
+      run: |
+        git fetch origin "${{ inputs.base }}" --depth=200 || true
+        node "${{ github.action_path }}/packages/cli/dist/index.js" check \
+          --base "origin/${{ inputs.base }}" --md

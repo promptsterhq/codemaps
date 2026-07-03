@@ -21,5 +21,6 @@ export * from "./codemap-store.js";
 export * from "./security.js";
 export * from "./files.js";
 export * from "./orient.js";
+export * from "./check.js";
 
 export const CODEMAPS_CORE_VERSION = "0.0.0";
