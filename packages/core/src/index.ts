@@ -13,6 +13,8 @@ export * from "./store.js";
 export * from "./risk.js";
 export * from "./guardrails.js";
 export * from "./ts-indexer.js";
+export * from "./py-indexer.js";
+export * from "./repo-indexer.js";
 export * from "./query.js";
 export * from "./agents-md.js";
 export * from "./codemap-store.js";

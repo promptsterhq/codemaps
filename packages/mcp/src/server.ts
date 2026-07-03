@@ -18,7 +18,7 @@ import {
   MutableGraph,
   buildRiskIndex,
   impact,
-  indexTypeScript,
+  indexRepo,
   locate,
   mineGuardrails,
   resolveTarget,
@@ -53,7 +53,7 @@ class Engine {
         const raw = await readFile(path.join(this.repoRoot, ".codemaps", "graph.json"), "utf8");
         return MutableGraph.fromJSON(JSON.parse(raw) as SerializedGraph);
       } catch {
-        const result = await indexTypeScript(this.repoRoot);
+        const result = await indexRepo(this.repoRoot);
         return result.graph;
       }
     })();

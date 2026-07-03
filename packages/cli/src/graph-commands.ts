@@ -11,7 +11,7 @@ import path from "node:path";
 import {
   MutableGraph,
   impact,
-  indexTypeScript,
+  indexRepo,
   locate,
   resolveTarget,
   type SerializedGraph,
@@ -37,7 +37,7 @@ export async function runIndex(): Promise<number> {
     return 1;
   }
   const started = Date.now();
-  const result = await indexTypeScript(root);
+  const result = await indexRepo(root);
   await mkdir(path.dirname(graphPath(root)), { recursive: true });
   await writeFile(graphPath(root), JSON.stringify(result.graph.toJSON()));
   console.log(

@@ -10,7 +10,7 @@ import path from "node:path";
 import {
   buildRiskIndex,
   generateAgentsMd,
-  indexTypeScript,
+  indexRepo,
   loadCodemap,
   mergeFindings,
   mineGuardrails,
@@ -57,7 +57,7 @@ export async function runInit(args: string[]): Promise<number> {
   );
 
   // 3. Thin graph (table stakes).
-  const idx = await indexTypeScript(repoRoot);
+  const idx = await indexRepo(repoRoot);
   await mkdir(path.join(repoRoot, ".codemaps"), { recursive: true });
   await writeFile(path.join(repoRoot, ".codemaps", "graph.json"), JSON.stringify(idx.graph.toJSON()));
   console.log(`  ✓ graph       ${idx.symbolCount} symbols, ${idx.edgeCount} edges -> .codemaps/graph.json`);

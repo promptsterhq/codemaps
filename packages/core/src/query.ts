@@ -6,7 +6,7 @@
 import type { GraphNode, NodeId } from "./graph.js";
 import type { MutableGraph } from "./store.js";
 
-const TEST_PATH = /(\.test\.|\.spec\.|__tests__\/|\/tests?\/)/;
+const TEST_PATH = /(\.test\.|\.spec\.|__tests__\/|(^|\/)tests?\/|(^|\/)test_[^/]+\.py$|_test\.(py|go|ts|js)$)/;
 
 export interface ImpactResult {
   target: GraphNode;
