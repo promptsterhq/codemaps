@@ -60,6 +60,11 @@ function printHuman(r: RiskReport, windowMonths: number, totalCommits: number): 
     `   owners     ${s.topOwners.map((o) => `${o.name} ${Math.round(o.share * 100)}%`).join(", ") || "unknown"}`,
   );
   console.log(`   bus-factor ${s.busFactor}${s.busFactor === 1 ? "  ⚠️  single-owner" : ""}`);
+  const covered = r.files.filter((f) => f.coverage !== null);
+  if (covered.length > 0) {
+    const avg = Math.round(covered.reduce((n, f) => n + (f.coverage ?? 0), 0) / covered.length);
+    console.log(`   coverage   ${avg}% (lcov)`);
+  }
 
   if (r.kind === "directory" && r.files.length > 1) {
     console.log(`\n   hottest files:`);

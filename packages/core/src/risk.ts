@@ -31,6 +31,8 @@ export interface FileRisk {
   authors: { name: string; share: number }[];
   /** Smallest number of authors covering >50% of this file's changes. */
   busFactor: number;
+  /** Line coverage % from lcov (coverage/lcov.info) — null if unavailable. */
+  coverage: number | null;
   /** Lines of code (current) — part of the complexity proxy. */
   loc: number;
   /** Mean leading-indent depth — cheap nesting/complexity proxy, no parser. */
@@ -101,11 +103,48 @@ function resolveNumstatPath(raw: string): string {
   return raw;
 }
 
+/**
+ * Parse lcov (coverage/lcov.info or lcov.info) into path -> line-coverage %.
+ * Best-effort: coverage is CI-produced and may be stale; consumers must treat
+ * it as advisory. Returns empty map when absent.
+ */
+async function parseLcov(repoRoot: string): Promise<Map<string, number>> {
+  const coverage = new Map<string, number>();
+  let raw: string | null = null;
+  for (const candidate of ["coverage/lcov.info", "lcov.info", ".coverage/lcov.info"]) {
+    try {
+      raw = await readFile(path.join(repoRoot, candidate), "utf8");
+      break;
+    } catch {
+      /* try next */
+    }
+  }
+  if (!raw) return coverage;
+  let current: string | null = null;
+  let found = 0;
+  let hit = 0;
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("SF:")) {
+      const p = line.slice(3).trim();
+      current = path.isAbsolute(p) ? path.relative(repoRoot, p).replace(/\\/g, "/") : p.replace(/\\/g, "/");
+      found = 0;
+      hit = 0;
+    } else if (line.startsWith("LF:")) found = Number(line.slice(3));
+    else if (line.startsWith("LH:")) hit = Number(line.slice(3));
+    else if (line.startsWith("end_of_record") && current) {
+      coverage.set(current, found > 0 ? Math.round((hit / found) * 100) : 100);
+      current = null;
+    }
+  }
+  return coverage;
+}
+
 export async function buildRiskIndex(
   repoRoot: string,
   options: { windowMonths?: number } = {},
 ): Promise<RepoRiskIndex> {
   const windowMonths = options.windowMonths ?? 12;
+  const lcov = await parseLcov(repoRoot);
   const log = await git(repoRoot, [
     "log",
     `--since=${windowMonths} months ago`,
@@ -182,6 +221,7 @@ export async function buildRiskIndex(
       lastTouched: new Date(s.lastTouched * 1000).toISOString().slice(0, 10),
       authors,
       busFactor,
+      coverage: lcov.get(filePath) ?? null,
       loc,
       indentDepth,
       hotspotScore: 0, // filled below
@@ -248,7 +288,7 @@ const RECENT_CHURN_DAYS = 30;
 export interface RiskCache {
   generatedAt: string;
   windowMonths: number;
-  files: Record<string, { hotspotPercentile: number; busFactor: number; commits: number; topOwner: string }>;
+  files: Record<string, { hotspotPercentile: number; busFactor: number; commits: number; topOwner: string; coverage: number | null }>;
 }
 
 export function toRiskCache(index: RepoRiskIndex): RiskCache {
@@ -259,6 +299,7 @@ export function toRiskCache(index: RepoRiskIndex): RiskCache {
       busFactor: f.busFactor,
       commits: f.commits,
       topOwner: f.authors[0]?.name ?? "unknown",
+      coverage: f.coverage,
     };
   }
   return { generatedAt: index.generatedAt, windowMonths: index.windowMonths, files };
@@ -309,6 +350,16 @@ export function riskForPath(index: RepoRiskIndex, target: string): RiskReport | 
         `Tacit knowledge likely lives with one person — do not assume undocumented behavior is safe to change.`,
     );
   }
+  const weakSafetyNet = files.find(
+    (f) => f.hotspotPercentile >= HOTSPOT_WARN_PERCENTILE && f.coverage !== null && f.coverage < 50,
+  );
+  if (weakSafetyNet) {
+    warnings.push(
+      `WEAK SAFETY NET: ${weakSafetyNet.path} is a hotspot with only ${weakSafetyNet.coverage}% line coverage. ` +
+        `The tests will not catch most regressions here — pin current behavior with a characterization test before changing it.`,
+    );
+  }
+
   const daysSinceTouch = files
     .map((f) => (Date.now() - Date.parse(f.lastTouched)) / 86_400_000)
     .reduce((a, b) => Math.min(a, b), Infinity);
