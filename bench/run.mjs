@@ -16,6 +16,7 @@
 
 import { execFileSync, execFile } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync, existsSync, cpSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,17 +63,14 @@ async function runOne(task, arm) {
     console.error(`missing repo: ${src} (clone it first, e.g. into bench/repos/)`);
     return;
   }
-  const workdir = path.join(RESULTS_DIR, "work", label);
+  // Work dirs live OUTSIDE the repo (copying self into a subdir of self fails).
+  const workdir = path.join(os.tmpdir(), "codemaps-bench", label);
   rmSync(workdir, { recursive: true, force: true });
   mkdirSync(path.dirname(workdir), { recursive: true });
   cpSync(src, workdir, {
     recursive: true,
     filter: (p) => !p.includes("node_modules") && !p.includes("bench/results"),
   });
-  execFileSync("git", ["-C", workdir, "add", "-A"], { stdio: "ignore" });
-  execFileSync("git", ["-C", workdir, "-c", "user.name=bench", "-c", "user.email=bench@codemaps.dev",
-    "commit", "-q", "-m", "bench baseline", "--allow-empty"], { stdio: "ignore" });
-
   // 2. Arm setup.
   const baseTools = "Bash,Read,Edit,Write,Grep,Glob";
   const cliArgs = ["-p", task.prompt, "--output-format", "json", "--max-turns", "30"];
@@ -92,6 +90,12 @@ async function runOne(task, arm) {
   } else {
     cliArgs.push("--allowedTools", baseTools);
   }
+
+  // Baseline commit AFTER arm setup so init artifacts (AGENTS.md, .codemaps/)
+  // don't pollute the agent's diff.
+  execFileSync("git", ["-C", workdir, "add", "-A"], { stdio: "ignore" });
+  execFileSync("git", ["-C", workdir, "-c", "user.name=bench", "-c", "user.email=bench@codemaps.dev",
+    "commit", "-q", "-m", "bench baseline", "--allow-empty"], { stdio: "ignore" });
 
   // 3. Run the agent.
   const started = Date.now();

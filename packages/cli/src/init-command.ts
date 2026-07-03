@@ -5,7 +5,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildRiskIndex,
@@ -63,6 +63,20 @@ export async function runInit(args: string[]): Promise<number> {
     });
     await writeFile(agentsPath, md);
     console.log(`  ✓ AGENTS.md   generated (leads with risk + guardrails)`);
+  }
+
+  // 5. Claude Code reads CLAUDE.md, not AGENTS.md — write an @import bridge
+  //    so the guardrails actually load (see docs/RESEARCH.md §C).
+  const claudePath = path.join(repoRoot, "CLAUDE.md");
+  const claudeExists = await access(claudePath).then(() => true, () => false);
+  if (!claudeExists) {
+    await writeFile(claudePath, `@AGENTS.md\n`);
+    console.log(`  ✓ CLAUDE.md   bridge created (@AGENTS.md import for Claude Code)`);
+  } else {
+    const existing = await readFile(claudePath, "utf8");
+    if (!existing.includes("AGENTS.md")) {
+      console.log(`  ⚠ CLAUDE.md exists but doesn't reference AGENTS.md — add "@AGENTS.md" to load Codemaps context in Claude Code.`);
+    }
   }
 
   console.log(`

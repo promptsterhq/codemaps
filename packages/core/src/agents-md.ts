@@ -77,6 +77,13 @@ export function generateAgentsMd(input: AgentsMdInput): string {
 
   if (zones.length > 0) {
     lines.push(`### Do-not-touch zones`);
+    lines.push(
+      `**Never hand-edit these — even to "keep things consistent," even if constraints ` +
+        `(like "don't run installs") make it tempting, and even if the edit seems provably ` +
+        `equivalent to the generated result.** If a task appears to require editing one, ` +
+        `stop and tell the user which tool regenerates it instead.`,
+    );
+    lines.push("");
     const byReason = new Map<string, string[]>();
     for (const z of zones) {
       const list = byReason.get(z.reason) ?? [];
