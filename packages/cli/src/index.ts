@@ -12,44 +12,55 @@
  */
 
 import { CODEMAPS_CORE_VERSION } from "@codemaps/core";
+import { runRisk } from "./risk-command.js";
 
-type Command = "init" | "index" | "serve" | "explore" | "help" | "version";
+type Command = "risk" | "guardrails" | "init" | "index" | "serve" | "explore" | "help" | "version";
 
-function parse(argv: string[]): Command {
+function parse(argv: string[]): { command: Command; rest: string[] } {
   const cmd = argv[2];
+  const rest = argv.slice(3);
   switch (cmd) {
+    case "risk":
+    case "guardrails":
     case "init":
     case "index":
     case "serve":
     case "explore":
-      return cmd;
+      return { command: cmd, rest };
     case "-v":
     case "--version":
     case "version":
-      return "version";
+      return { command: "version", rest };
     default:
-      return "help";
+      return { command: "help", rest };
   }
 }
 
-const HELP = `codemaps — local-first context engine for AI coding agents
+const HELP = `codemaps — local-first intent & risk layer for AI coding agents
 
 Usage: codemaps <command>
 
-  init       Index the repo, generate AGENTS.md, register the MCP server
-  index      (Re)build the code graph
-  serve      Start the local MCP server (agents query the six lenses)
-  explore    Open the visual explorer (coming in Phase 1)
-  version    Print version
+  risk <path>        How dangerous is this code to touch? (hotspots, churn,
+                     ownership, bus-factor — derived from git history)
+  guardrails <path>  What must stay true here? (do-not-touch zones, invariants)
+  init               Index the repo, generate AGENTS.md, register the MCP server
+  index              (Re)build the code graph
+  serve              Start the local MCP server (agents query the six lenses)
+  explore            Open the visual explorer (coming in Phase 1)
+  version            Print version
 
 Docs: https://codemaps.dev`;
 
-function main(): void {
-  const command = parse(process.argv);
+async function main(): Promise<void> {
+  const { command, rest } = parse(process.argv);
   switch (command) {
     case "version":
       console.log(`codemaps ${CODEMAPS_CORE_VERSION}`);
       break;
+    case "risk":
+      process.exitCode = await runRisk(rest);
+      break;
+    case "guardrails":
     case "init":
     case "index":
     case "serve":
@@ -62,4 +73,4 @@ function main(): void {
   }
 }
 
-main();
+void main();
