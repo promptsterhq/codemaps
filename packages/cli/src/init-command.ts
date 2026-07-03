@@ -121,6 +121,24 @@ Agents get: risk · guardrails · impact · locate (see AGENTS.md).`);
   return 0;
 }
 
+/**
+ * Pick a hook command that will actually resolve when Claude Code runs it.
+ * Hooks execute in a NON-interactive shell: PATH additions living in .zshrc
+ * (interactive-only) are invisible there, and a hook that can't resolve its
+ * binary dies SILENTLY — the one failure a guardrail must never have. So:
+ * prefer bare `codemaps` only if a non-interactive shell can see it; otherwise
+ * pin the absolute node + CLI entrypoint of this very installation.
+ */
+async function hookCommand(): Promise<string> {
+  try {
+    await execFileAsync("/bin/sh", ["-c", "command -v codemaps"]);
+    return "codemaps hook";
+  } catch {
+    const entry = path.resolve(process.argv[1] ?? "");
+    return `"${process.execPath}" "${entry}" hook`;
+  }
+}
+
 /** Merge our hooks into .claude/settings.json without clobbering existing config. */
 async function registerHooks(repoRoot: string): Promise<void> {
   const settingsDir = path.join(repoRoot, ".claude");
@@ -134,20 +152,25 @@ async function registerHooks(repoRoot: string): Promise<void> {
     /* fresh file */
   }
 
+  const command = await hookCommand();
   const hooks = (settings.hooks ?? {}) as Record<string, unknown[]>;
+  // Drop any earlier codemaps registrations (command form may have changed).
+  for (const key of ["PreToolUse", "SessionStart"]) {
+    hooks[key] = (hooks[key] ?? []).filter((h) => !JSON.stringify(h).includes("codemaps") ||
+      JSON.stringify(h).includes(command));
+  }
   const entry = {
     matcher: "Edit|Write",
-    hooks: [{ type: "command", command: "codemaps hook", timeout: 10 }],
+    hooks: [{ type: "command", command, timeout: 10 }],
   };
-  const existing = JSON.stringify(hooks.PreToolUse ?? []);
-  if (!existing.includes("codemaps hook")) {
+  if (!JSON.stringify(hooks.PreToolUse ?? []).includes(command)) {
     hooks.PreToolUse = [...(hooks.PreToolUse ?? []), entry];
   }
-  const sessionEntry = { hooks: [{ type: "command", command: "codemaps hook", timeout: 10 }] };
-  if (!JSON.stringify(hooks.SessionStart ?? []).includes("codemaps hook")) {
+  const sessionEntry = { hooks: [{ type: "command", command, timeout: 10 }] };
+  if (!JSON.stringify(hooks.SessionStart ?? []).includes(command)) {
     hooks.SessionStart = [...(hooks.SessionStart ?? []), sessionEntry];
   }
   settings.hooks = hooks;
   await writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n");
-  console.log(`  ✓ hooks       PreToolUse + SessionStart registered in .claude/settings.json`);
+  console.log(`  ✓ hooks       PreToolUse + SessionStart registered (${command.startsWith('"') ? "pinned absolute path — 'codemaps' not on non-interactive PATH" : "via PATH"})`);
 }
