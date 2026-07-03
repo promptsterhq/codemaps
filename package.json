@@ -5,7 +5,7 @@
   "description": "Local-first context engine that maps repositories for AI coding agents.",
   "packageManager": "pnpm@10.34.4",
   "engines": {
-    "node": ">=18.18"
+    "node": ">=18"
   },
   "scripts": {
     "build": "turbo run build",
