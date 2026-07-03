@@ -73,7 +73,9 @@ async function runOne(task, arm) {
   });
   // 2. Arm setup.
   const baseTools = "Bash,Read,Edit,Write,Grep,Glob";
-  const cliArgs = ["-p", task.prompt, "--output-format", "json", "--max-turns", "30"];
+  // stream-json + verbose: capture per-turn tool calls so scoring can verify
+  // whether the agent consulted risk/guardrails/impact before editing.
+  const cliArgs = ["-p", task.prompt, "--output-format", "stream-json", "--verbose", "--max-turns", "30"];
   if (arm === "codemaps") {
     // Generate AGENTS.md + graph in the workdir, then attach the MCP server.
     execFileSync("node", [path.join(repoRoot, "packages/cli/dist/index.js"), "init", "--force"],
@@ -115,7 +117,7 @@ async function runOne(task, arm) {
   };
   writeFileSync(path.join(RESULTS_DIR, `${label}.json`), JSON.stringify(result, null, 2));
   writeFileSync(path.join(RESULTS_DIR, `${label}.diff`), diff);
-  writeFileSync(path.join(RESULTS_DIR, `${label}.transcript.json`), transcript.stdout ?? "");
+  writeFileSync(path.join(RESULTS_DIR, `${label}.transcript.jsonl`), transcript.stdout ?? "");
   console.log(`   done in ${seconds}s — diff: ${result.diffStat.split("\n").pop() || "(empty)"}`);
   console.log(`   -> results/${label}.{json,diff,transcript.json}`);
 }
