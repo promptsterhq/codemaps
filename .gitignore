@@ -5,6 +5,7 @@ build/
 out/
 coverage/
 *.tsbuildinfo
+.turbo/
 
 # Codemaps local artifacts
 .codemaps/
