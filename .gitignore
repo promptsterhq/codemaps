@@ -30,3 +30,4 @@ bench/results/
 bench/repos/
 .vercel
 .env*
+.playwright-mcp/
