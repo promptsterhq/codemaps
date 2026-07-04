@@ -23,6 +23,7 @@ import { runOrient } from "./orient-command.js";
 import { runCheckCommand } from "./check-command.js";
 import { runContracts } from "./contracts-command.js";
 import { runStitch } from "./stitch-command.js";
+import { runPush } from "./push-command.js";
 
 type Command =
   | "risk"
@@ -30,6 +31,7 @@ type Command =
   | "check"
   | "contracts"
   | "stitch"
+  | "push"
   | "security"
   | "guardrails"
   | "impact"
@@ -50,6 +52,7 @@ function parse(argv: string[]): { command: Command; rest: string[] } {
     case "check":
     case "contracts":
     case "stitch":
+    case "push":
     case "orient":
     case "security":
     case "guardrails":
@@ -89,6 +92,9 @@ Usage: codemaps <command>
                      (routes, gRPC, GraphQL, OpenAPI, events)
   stitch <r=f ...>   Cross-repo service graph from 2+ contracts.json files;
                      --impact <repo> <contractId> = whose service breaks?
+  push               Upload artifacts (contracts+risk+guardrails) to Codemaps
+                     cloud. Needs CODEMAPS_API_KEY (dashboard). Complements the
+                     GitHub App, which can't compute risk (no git server-side).
   index              (Re)build the code graph (.codemaps/graph.json)
   init               Index the repo, generate AGENTS.md, register the MCP server
   serve              Start the local MCP server (agents query the six lenses)
@@ -123,6 +129,9 @@ async function main(): Promise<void> {
       break;
     case "stitch":
       process.exitCode = await runStitch(rest);
+      break;
+    case "push":
+      process.exitCode = await runPush(rest);
       break;
     case "impact":
       process.exitCode = await runImpact(rest);
