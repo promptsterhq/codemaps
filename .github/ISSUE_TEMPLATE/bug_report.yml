@@ -1,0 +1,41 @@
+name: Bug report
+description: Something is wrong in the engine, CLI, or MCP server
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`codemaps --version` (or commit sha if running from source)"
+    validations:
+      required: true
+  - type: input
+    id: repo-shape
+    attributes:
+      label: Repo shape
+      description: Language(s), rough size, monorepo or single package
+      placeholder: "TS monorepo, ~2k files, pnpm workspaces"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the command you ran and the output. For lens wrongness (false hotspot, missed route, bogus guardrail), paste the specific finding.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - CLI command
+        - MCP tool (via an agent)
+        - PreToolUse/SessionStart hook
+        - AGENTS.md generation
+        - PR check (codemaps check / Action)
+        - explorer (codemaps explore)
+    validations:
+      required: true

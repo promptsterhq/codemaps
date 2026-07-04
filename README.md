@@ -1,5 +1,8 @@
 # Codemaps
 
+[![CI](https://github.com/promptsterhq/codemaps/actions/workflows/codemaps.yml/badge.svg)](https://github.com/promptsterhq/codemaps/actions/workflows/codemaps.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 > The open-source Codemaps engine, CLI, and MCP server. The hosted cross-repo
 > service graph (Codemaps Cloud) is a separate proprietary product:
 > https://codemaps-schinizels-projects.vercel.app

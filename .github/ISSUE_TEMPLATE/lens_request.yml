@@ -1,0 +1,30 @@
+name: Detector / language request
+description: A framework, language, or pattern one of the six lenses should understand
+labels: [detector]
+body:
+  - type: dropdown
+    id: lens
+    attributes:
+      label: Which lens
+      options:
+        - Orient
+        - Locate
+        - Impact (graph/edges)
+        - Guardrails (zones/invariants)
+        - Risk
+        - Security
+        - Contracts (serves/calls/events)
+    validations:
+      required: true
+  - type: textarea
+    id: pattern
+    attributes:
+      label: The pattern to detect
+      description: A minimal real-world code snippet the lens currently misses (or misreads), and what it should extract from it.
+    validations:
+      required: true
+  - type: input
+    id: prevalence
+    attributes:
+      label: How common is it?
+      placeholder: "every Next.js App Router project / Django 4+ / our shop only"
