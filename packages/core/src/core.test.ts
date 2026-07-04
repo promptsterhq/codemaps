@@ -223,3 +223,58 @@ test("contracts: extracts express routes, proto rpcs, graphql fields, openapi pa
   const express = s.serves.find((c) => c.via === "express-style")!;
   assert.ok(proto.confidence > express.confidence);
 });
+
+// ---------------------------------------------------------------------------
+// Cross-repo stitching — the Phase 3 headline moat, tested with zero cloud
+// ---------------------------------------------------------------------------
+
+test("stitch: joins caller repo to provider repo on contract identity", async () => {
+  const { stitchServiceGraph, crossRepoImpact } = await import("./stitch.js");
+  const surfaces = [
+    {
+      repo: "acme/storefront",
+      surface: {
+        serves: [],
+        calls: [{ kind: "http" as const, id: "http:POST /v1/invoices", method: "POST", url: "https://billing.internal/v1/invoices", file: "src/checkout.ts", line: 42, via: "axios", confidence: 0.75 }],
+        events: [{ role: "subscribe" as const, id: "event:invoice.paid", topic: "invoice.paid", file: "src/consumer.ts", line: 10, via: "kafka", confidence: 0.7 }],
+        provenance: "heuristic" as const,
+      },
+    },
+    {
+      repo: "acme/billing",
+      surface: {
+        serves: [
+          { kind: "http" as const, id: "http:POST /v1/invoices", method: "POST", route: "/v1/invoices", file: "src/routes.ts", line: 7, via: "express-style", confidence: 0.8 },
+          { kind: "http" as const, id: "http:GET /v1/health", method: "GET", route: "/v1/health", file: "src/routes.ts", line: 3, via: "express-style", confidence: 0.8 },
+        ],
+        calls: [{ kind: "http" as const, id: "http:GET /never-indexed", method: "GET", url: "https://stripe.com/never-indexed", file: "src/pay.ts", line: 5, via: "fetch", confidence: 0.7 }],
+        events: [{ role: "publish" as const, id: "event:invoice.paid", topic: "invoice.paid", file: "src/emit.ts", line: 20, via: "kafka", confidence: 0.7 }],
+        provenance: "heuristic" as const,
+      },
+    },
+  ];
+
+  const graph = stitchServiceGraph(surfaces);
+
+  // HTTP edge: storefront -> billing on POST /v1/invoices.
+  const http = graph.edges.find((e) => e.kind === "http");
+  assert.ok(http);
+  assert.equal(http!.from, "acme/storefront");
+  assert.equal(http!.to, "acme/billing");
+
+  // Event edge: billing (producer) -> storefront (consumer), weakest tier.
+  const event = graph.edges.find((e) => e.kind === "event");
+  assert.ok(event);
+  assert.equal(event!.from, "acme/billing");
+  assert.ok(event!.confidence < http!.confidence, "topic joins must rank below typed/http joins");
+
+  // Dangling + unconsumed are surfaced, never hidden.
+  assert.ok(graph.danglingCalls.some((d) => d.contractId.includes("/never-indexed")));
+  assert.ok(graph.unconsumedServes.some((u) => u.contractId === "http:GET /v1/health"));
+
+  // The money question: change POST /v1/invoices in billing -> who breaks?
+  const impact = crossRepoImpact(graph, "acme/billing", "http:POST /v1/invoices");
+  assert.equal(impact.consumers.length, 1);
+  assert.equal(impact.consumers[0]!.repo, "acme/storefront");
+  assert.equal(impact.consumers[0]!.file, "src/checkout.ts");
+});

@@ -23,5 +23,6 @@ export * from "./files.js";
 export * from "./orient.js";
 export * from "./check.js";
 export * from "./contracts.js";
+export * from "./stitch.js";
 
 export const CODEMAPS_CORE_VERSION = "0.0.0";

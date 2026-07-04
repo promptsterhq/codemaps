@@ -22,12 +22,14 @@ import { runSecurity } from "./security-command.js";
 import { runOrient } from "./orient-command.js";
 import { runCheckCommand } from "./check-command.js";
 import { runContracts } from "./contracts-command.js";
+import { runStitch } from "./stitch-command.js";
 
 type Command =
   | "risk"
   | "orient"
   | "check"
   | "contracts"
+  | "stitch"
   | "security"
   | "guardrails"
   | "impact"
@@ -47,6 +49,7 @@ function parse(argv: string[]): { command: Command; rest: string[] } {
     case "risk":
     case "check":
     case "contracts":
+    case "stitch":
     case "orient":
     case "security":
     case "guardrails":
@@ -84,6 +87,8 @@ Usage: codemaps <command>
                      do-not-touch edits.
   contracts          What this repo publishes & consumes over the network
                      (routes, gRPC, GraphQL, OpenAPI, events)
+  stitch <r=f ...>   Cross-repo service graph from 2+ contracts.json files;
+                     --impact <repo> <contractId> = whose service breaks?
   index              (Re)build the code graph (.codemaps/graph.json)
   init               Index the repo, generate AGENTS.md, register the MCP server
   serve              Start the local MCP server (agents query the six lenses)
@@ -115,6 +120,9 @@ async function main(): Promise<void> {
       break;
     case "contracts":
       process.exitCode = await runContracts(rest);
+      break;
+    case "stitch":
+      process.exitCode = await runStitch(rest);
       break;
     case "impact":
       process.exitCode = await runImpact(rest);
