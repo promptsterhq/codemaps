@@ -269,7 +269,10 @@ test("stitch: joins caller repo to provider repo on contract identity", async ()
   assert.ok(event!.confidence < http!.confidence, "topic joins must rank below typed/http joins");
 
   // Dangling + unconsumed are surfaced, never hidden.
-  assert.ok(graph.danglingCalls.some((d) => d.contractId.includes("/never-indexed")));
+  const dangle = graph.danglingCalls.find((d) => d.contractId.includes("/never-indexed"));
+  assert.ok(dangle);
+  // The raw url (with host) rides along — contractId strips it, classifiers need it.
+  assert.equal(dangle!.url, "https://stripe.com/never-indexed");
   assert.ok(graph.unconsumedServes.some((u) => u.contractId === "http:GET /v1/health"));
 
   // The money question: change POST /v1/invoices in billing -> who breaks?

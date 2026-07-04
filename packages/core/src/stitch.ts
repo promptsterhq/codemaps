@@ -40,8 +40,10 @@ export interface ServiceEdge {
 export interface ServiceGraph {
   services: { repo: string; serves: number; calls: number; events: number }[];
   edges: ServiceEdge[];
-  /** Calls that matched no indexed provider — external SaaS or unindexed repo. */
-  danglingCalls: { repo: string; contractId: string; file: string; line: number }[];
+  /** Calls that matched no indexed provider — external SaaS or unindexed repo.
+   *  url = the raw captured URL (contractId strips the host; consumers need it
+   *  to classify by hostname). */
+  danglingCalls: { repo: string; contractId: string; file: string; line: number; url: string }[];
   /** Served contracts nobody indexed calls — public API or dead surface. */
   unconsumedServes: { repo: string; contractId: string }[];
 }
@@ -69,7 +71,7 @@ export function stitchServiceGraph(surfaces: RepoSurface[]): ServiceGraph {
       if (external.length === 0) {
         // Same-repo self-calls are in-repo graph territory, not service edges.
         if (matches.length === 0) {
-          dangling.push({ repo, contractId: call.id, file: call.file, line: call.line });
+          dangling.push({ repo, contractId: call.id, file: call.file, line: call.line, url: call.url });
         }
         continue;
       }
