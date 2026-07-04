@@ -63,3 +63,24 @@ This repo runs a local Codemaps MCP server (`codemaps serve`) with fresher, quer
 | `locate` | to find where a concept lives | ranked symbols/files with locations |
 
 Recommended flow: `locate` → `risk` + `guardrails` on the target → make the change → `impact` to know what to re-test. All results carry provenance + confidence; treat `impact` as a floor (static analysis misses dynamic dispatch).
+
+## Specialist agents — `.claude/agents/`
+
+This repo has 14 Claude Code subagents scoped to Codemaps' actual domain (see `.claude/agents/README.md` for the full roster). Prefer delegating to the owner instead of guessing across package boundaries:
+
+| Area | Agent |
+|------|-------|
+| `packages/core` — the six lenses, tree-sitter graph, Risk/Guardrails mining, materiality gate | `core-engine-architect` |
+| `packages/mcp` + hook contracts, cross-runtime (Claude Code/Cursor/Copilot/Cline/Codex) compat | `agent-integrations` |
+| `packages/cli` — `init` pipeline, `hook-command.ts`, local `.codemaps/*` persistence | `cli-platform-eng` |
+| `apps/web` + Supabase — cross-repo stitching, snapshots, RLS, GitHub App server-side indexing | `cloud-platform-eng` |
+| Local-first boundary, hook/MCP trust boundary, secrets, cloud RLS, trust/DPA drafting | `security-compliance` |
+| What's allowed to leave the machine, git-mined identity data, snapshot retention | `privacy-boundary` |
+| `bench/` harness — trap tasks, baseline-vs-codemaps scoring, benchmark-claim gating | `benchmark-evals` |
+| Hosted service-map dashboard (the one real frontend) | `web-dashboard-ux` |
+| Test strategy — lens correctness fixtures, hook-safety, RLS isolation | `qa-test` |
+| Generated `AGENTS.md`/`CLAUDE.md`/`guardrails.json` as a product surface, API/CLI docs | `docs-agents-md` |
+| Roadmap, positioning, competitive framing | `product-strategy` |
+| Developer marketing, launch/content | `gtm-marketing` |
+| Pricing/packaging of the free CLI vs. paid cloud tier | `pricing-packaging` |
+| Cross-cutting review gate before merging multi-package changes | `staff-engineer-reviewer` |

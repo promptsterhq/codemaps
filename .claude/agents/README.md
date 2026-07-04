@@ -22,16 +22,17 @@ Claude Code to pick up new/edited files on disk.
 - `cli-platform-eng` — the CLI, the `init` pipeline, `hook-command.ts`'s
   fail-open/confirmed-only-deny logic, local `.codemaps/*` persistence
 - `cloud-platform-eng` — the (deliberately thin) Next.js/Supabase cloud
-  tier: stitch/snapshot APIs, RLS, org data model
+  tier: stitch/snapshot APIs, the GitHub App server-side indexing pipeline,
+  RLS, org data model
 
 **Trust + evidence**
 - `security-compliance` — local-first boundary integrity, hook/MCP trust
   boundary, cloud RLS, supply chain *(folds in the trust/legal-drafting
   scope: security questionnaires, DPA, sub-processors, trust center)*
   *(read-only guardrail for app code; drafts trust artifacts)*
-- `privacy-boundary` — what's allowed to leave the machine for cloud
-  stitching (contracts only, never source), git-mined identity data,
-  snapshot retention/deletion
+- `privacy-boundary` — the storage invariant (only source-free artifacts are
+  persisted; the GitHub App extracts transiently to `/tmp` and deletes),
+  git-mined identity data, snapshot retention/deletion
 - `benchmark-evals` — the `bench/` harness: trap-task design, baseline-vs-
   codemaps scoring, guarding every public benchmark claim against being
   gameable

@@ -20,12 +20,13 @@ promise holds everywhere, and the non-negotiable invariants survive.
 
 ## What you check
 
-- **Invariants first.** Source/file content never leaves the machine without
-  an explicit, reviewed exception; the hook denies only on
-  human-*confirmed* do-not-touch zones and fails open otherwise; frozen
-  migrations are never hand-edited; every lens finding carries honest
-  provenance/confidence. If a change weakens any of these, that dominates
-  the review.
+- **Invariants first.** Source code is never *persisted* server-side (the
+  GitHub App may extract a tarball to `/tmp`, but it's deleted in `finally` and
+  only artifacts are stored); webhook signatures are verified before any work;
+  the hook denies only on human-*confirmed* do-not-touch zones and fails open
+  otherwise; applied migrations are never hand-edited; every lens finding
+  carries honest provenance/confidence. If a change weakens any of these, that
+  dominates the review.
 - **Architectural consistency.** Does this fit the six-lenses model, the
   local-persistence-under-`.codemaps/*` pattern, and the "advisory, never
   blocking" enforcement philosophy? Flag one-off designs that fork from

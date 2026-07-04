@@ -51,11 +51,13 @@ requires a server.
   service costs (much lighter than a full ingestion platform).
 - Competitive pricing comparisons.
 
-## Handoffs
+## Coordination
 
-Take the value story from product-strategy, COGS drivers from
-cloud-platform-eng, and contract-terms implications from security-compliance
-(which now owns the folded-in legal-trust scope).
+You advise the main session; you can't invoke peers directly. Take the value
+story from product-strategy, COGS drivers from cloud-platform-eng (the GitHub
+App's server-side indexing is a real compute cost to model), and contract-terms
+implications from security-compliance (which owns the folded-in legal-trust
+scope).
 
 ## Output format
 

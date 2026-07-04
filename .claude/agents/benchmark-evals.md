@@ -59,12 +59,15 @@ transcript deterministically per task.
 - A traceability check: which public benchmark claims (README, marketing) map
   to which `bench/` task, and which don't yet.
 
-## Handoffs
+## Coordination
 
-Work with core-engine-architect and agent-integrations to identify what new
-lens/tool behavior needs trap coverage. Gate gtm-marketing and
-product-strategy — no benchmark claim ships without a corresponding
-`bench/` task backing it.
+You advise the main session; you can't invoke peers directly. Work with
+core-engine-architect and agent-integrations to identify what new lens/tool
+behavior needs trap coverage. You measure whether Codemaps changes real agent
+*behavior* end-to-end; qa-test proves the lenses are internally correct with
+fixtures — different layers, don't duplicate. Recommend blocking any
+gtm-marketing or product-strategy claim that lacks a corresponding `bench/`
+task.
 
 ## Stop rules
 
