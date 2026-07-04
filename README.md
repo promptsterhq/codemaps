@@ -1,6 +1,8 @@
 # Codemaps
 
-> Live: https://codemaps-schinizels-projects.vercel.app · deploys on push to main
+> The open-source Codemaps engine, CLI, and MCP server. The hosted cross-repo
+> service graph (Codemaps Cloud) is a separate proprietary product:
+> https://codemaps-schinizels-projects.vercel.app
 
 **A local-first context engine that maps your repository and serves it to AI coding agents — so they make fewer mistakes, change code faster, and know what *not* to touch.**
 
@@ -57,7 +59,6 @@ codemaps init --hooks    # PreToolUse hook: warns on hotspots/invariants,
 
 **Benchmark evidence** (same model, same prompt; [`bench/ANALYSIS.md`](bench/ANALYSIS.md)): on the lockfile trap the baseline agent hand-edited `pnpm-lock.yaml` while the Codemaps arm refused, cited the guardrail, and finished 2× faster. On the security trap both arms initially removed a path-traversal guard — which drove the Security lens (consequence-enriched invariants); on re-run the agent flagged the risk, named the `../../etc/passwd` attack, and proposed a safe alternative. **2/6 violations avoided, 0 regressions, n=1 per cell (early).**
 
-See [`docs/VISION.md`](docs/VISION.md) for the plan, [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md) for the defensible layers, and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the market/technical grounding (incl. the 2026 competitive re-scan).
 
 ## Repo layout
 
@@ -66,8 +67,6 @@ packages/
   core/   @codemaps/core   the context engine (graph, lenses, language analyzers)
   cli/    @codemaps/cli     npx codemaps (init / index / serve / explore)
   mcp/    @codemaps/mcp     MCP server exposing the six lenses
-apps/
-  web/                      Next.js marketing + hosted explorer (Phase 3)
 ```
 
 ## Develop
