@@ -1,5 +1,7 @@
 # Codemaps
 
+> Live: https://codemaps-schinizels-projects.vercel.app · deploys on push to main
+
 **A local-first context engine that maps your repository and serves it to AI coding agents — so they make fewer mistakes, change code faster, and know what *not* to touch.**
 
 AI agents fail most often not because the model is weak, but because they lack context: they hallucinate APIs, edit the wrong layer, break invariants, and don't know what's load-bearing. "Missing context" is the #1 agent failure mode (~60–65% of developers report it). Codemaps is the missing context layer.
