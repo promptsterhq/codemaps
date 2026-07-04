@@ -55,7 +55,7 @@
       "material": true,
       "id": "0ff79cc8e638",
       "firstSeen": "2026-07-03",
-      "materialWhy": "hotspot (78th pct)"
+      "materialWhy": "hotspot (76th pct)"
     },
     {
       "kind": "invariant",
@@ -69,7 +69,7 @@
       "material": true,
       "id": "1ef31739cc50",
       "firstSeen": "2026-07-03",
-      "materialWhy": "hotspot (78th pct)"
+      "materialWhy": "hotspot (76th pct)"
     },
     {
       "kind": "invariant",
@@ -83,7 +83,7 @@
       "material": true,
       "id": "e5ad309a41f7",
       "firstSeen": "2026-07-03",
-      "materialWhy": "hotspot (78th pct)"
+      "materialWhy": "hotspot (76th pct)"
     },
     {
       "kind": "invariant",
@@ -95,8 +95,22 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (76th pct)",
+      "materialWhy": "hotspot (87th pct)",
       "id": "4ae455d57c31",
+      "firstSeen": "2026-07-04"
+    },
+    {
+      "kind": "invariant",
+      "reason": "declared",
+      "path": "packages/core/src/core.test.ts",
+      "line": 250,
+      "statement": "stripe.com/never-indexed\", file: \"src/pay.ts\", line: 5, via: \"fetch\", confidence: 0.7 }],. [intent comment]",
+      "status": "proposed",
+      "provenance": "mined",
+      "confidence": 0.55,
+      "material": true,
+      "materialWhy": "hotspot (87th pct)",
+      "id": "69d609a07e64",
       "firstSeen": "2026-07-04"
     },
     {
@@ -116,6 +130,20 @@
       "materialWhy": "security-relevant (path-traversal-guard)",
       "id": "b01112a89dda",
       "firstSeen": "2026-07-03"
+    },
+    {
+      "kind": "invariant",
+      "reason": "declared",
+      "path": "packages/core/src/core.test.ts",
+      "line": 271,
+      "statement": "Dangling + unconsumed are surfaced, never hidden. [intent comment]",
+      "status": "proposed",
+      "provenance": "mined",
+      "confidence": 0.55,
+      "material": true,
+      "materialWhy": "hotspot (87th pct)",
+      "id": "bfd8ded2df83",
+      "firstSeen": "2026-07-04"
     },
     {
       "kind": "invariant",
@@ -141,7 +169,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (88th pct)",
+      "materialWhy": "hotspot (89th pct)",
       "id": "12c3d2010ed6",
       "firstSeen": "2026-07-03"
     },
@@ -155,7 +183,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (88th pct)",
+      "materialWhy": "hotspot (89th pct)",
       "id": "7ad2762bf9f1",
       "firstSeen": "2026-07-03"
     },
@@ -169,7 +197,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (88th pct)",
+      "materialWhy": "hotspot (89th pct)",
       "id": "9d65834efe39",
       "firstSeen": "2026-07-03"
     },
@@ -217,6 +245,18 @@
       "firstSeen": "2026-07-03",
       "decidedBy": "unknown",
       "decidedAt": "2026-07-03"
+    },
+    {
+      "kind": "do-not-touch",
+      "reason": "frozen-migration",
+      "path": "supabase/migrations/0001_init.sql",
+      "statement": "Database migration — applied migrations are immutable history; add a new migration instead of editing this one.",
+      "status": "proposed",
+      "provenance": "mined",
+      "confidence": 0.85,
+      "material": false,
+      "id": "f85813d71246",
+      "firstSeen": "2026-07-04"
     }
   ]
 }

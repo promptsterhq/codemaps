@@ -8,7 +8,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "turbo run build",
+    "build": "turbo run build --filter=!@codemaps/web",
+    "build:all": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
