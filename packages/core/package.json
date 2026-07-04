@@ -1,6 +1,6 @@
 {
   "name": "@codemaps/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Codemaps context engine: code graph, behavioral layer, and the six lenses.",
   "type": "module",
   "exports": {
@@ -27,5 +27,15 @@
     "tree-sitter-wasms": "^0.1.13",
     "typescript": "^5.6.3",
     "web-tree-sitter": "^0.24.7"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/promptsterhq/codemaps.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/promptsterhq/codemaps#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

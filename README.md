@@ -76,3 +76,10 @@ apps/
 pnpm install
 pnpm build
 ```
+
+## License
+
+The Codemaps engine, CLI, and MCP server (`packages/*`) are **Apache-2.0** —
+see [LICENSE](LICENSE). Contributions require a DCO sign-off
+([CONTRIBUTING.md](CONTRIBUTING.md)). The Codemaps cloud (cross-repo service
+graph, hosted at codemaps.dev) is a separate proprietary codebase.

@@ -1,7 +1,7 @@
 {
   "name": "@codemaps/cli",
-  "version": "0.0.0",
-  "description": "Codemaps CLI — npx codemaps: index a repo, generate AGENTS.md, serve context to agents.",
+  "version": "0.1.0",
+  "description": "Codemaps CLI \u2014 npx codemaps: index a repo, generate AGENTS.md, serve context to agents.",
   "type": "module",
   "bin": {
     "codemaps": "./dist/index.js"
@@ -21,5 +21,15 @@
   "devDependencies": {
     "@types/node": "^20.16.0",
     "typescript": "^5.6.3"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/promptsterhq/codemaps.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/promptsterhq/codemaps#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

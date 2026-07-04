@@ -1,7 +1,7 @@
 {
   "name": "@codemaps/mcp",
-  "version": "0.0.0",
-  "description": "Codemaps MCP server — exposes the six lenses as agent-callable tools.",
+  "version": "0.1.0",
+  "description": "Codemaps MCP server \u2014 exposes the six lenses as agent-callable tools.",
   "type": "module",
   "exports": {
     ".": {
@@ -25,5 +25,15 @@
   "devDependencies": {
     "@types/node": "^20.19.43",
     "typescript": "^5.6.3"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/promptsterhq/codemaps.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/promptsterhq/codemaps#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }
