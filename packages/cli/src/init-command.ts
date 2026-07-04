@@ -18,6 +18,7 @@ import {
   mineGuardrails,
   saveCodemap,
   toRiskCache,
+  extractContracts,
 } from "@codemaps/core";
 
 const execFileAsync = promisify(execFile);
@@ -60,7 +61,13 @@ export async function runInit(args: string[]): Promise<number> {
       `(codemap/guardrails.json: +${counts.added} new, ${counts.kept} human-decided kept)`,
   );
 
-  // 3. Thin graph (table stakes) — HEAD-stamped for freshness checks.
+  // 3. Contract surface — the artifact the Phase 3 cloud stitches cross-repo.
+  const contracts = await extractContracts(repoRoot);
+  await mkdir(path.join(repoRoot, ".codemaps"), { recursive: true });
+  await writeFile(path.join(repoRoot, ".codemaps", "contracts.json"), JSON.stringify(contracts));
+  console.log(`  ✓ contracts   ${contracts.serves.length} published, ${contracts.calls.length} consumed, ${contracts.events.length} event(s) -> .codemaps/contracts.json`);
+
+  // 4. Thin graph (table stakes) — HEAD-stamped for freshness checks.
   const idx = await indexRepo(repoRoot);
   const head = await execFileAsync("git", ["-C", repoRoot, "rev-parse", "HEAD"])
     .then((r) => r.stdout.trim())
@@ -69,7 +76,7 @@ export async function runInit(args: string[]): Promise<number> {
   await writeFile(path.join(repoRoot, ".codemaps", "graph.json"), JSON.stringify(idx.graph.toJSON(head)));
   console.log(`  ✓ graph       ${idx.symbolCount} symbols, ${idx.edgeCount} edges -> .codemaps/graph.json`);
 
-  // 4. AGENTS.md — refuse to clobber a hand-written one without --force.
+  // 5. AGENTS.md — refuse to clobber a hand-written one without --force.
   const agentsPath = path.join(repoRoot, "AGENTS.md");
   const exists = await access(agentsPath).then(() => true, () => false);
   if (exists && !force) {
@@ -88,7 +95,7 @@ export async function runInit(args: string[]): Promise<number> {
     console.log(`  ✓ AGENTS.md   generated (leads with risk + guardrails)`);
   }
 
-  // 5. Claude Code reads CLAUDE.md, not AGENTS.md — write an @import bridge
+  // 6. Claude Code reads CLAUDE.md, not AGENTS.md — write an @import bridge
   //    so the guardrails actually load (see docs/RESEARCH.md §C).
   const claudePath = path.join(repoRoot, "CLAUDE.md");
   const claudeExists = await access(claudePath).then(() => true, () => false);
@@ -102,7 +109,7 @@ export async function runInit(args: string[]): Promise<number> {
     }
   }
 
-  // 6. Optional: register enforcement hooks in project .claude/settings.json.
+  // 7. Optional: register enforcement hooks in project .claude/settings.json.
   if (args.includes("--hooks")) {
     await registerHooks(repoRoot);
   }

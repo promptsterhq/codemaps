@@ -25,6 +25,7 @@ import {
   scanSecurity,
   listRepoFiles,
   orient,
+  extractContracts,
   type RepoRiskIndex,
   type SerializedGraph,
 } from "@codemaps/core";
@@ -193,6 +194,21 @@ export async function startServer(): Promise<void> {
       const findings = await scanSecurity(repoRoot, files);
       return text({ target, findings, note: "heuristic beta — context for review, not verdicts" });
     },
+  );
+
+  server.registerTool(
+    "contracts",
+    {
+      title: "Contracts — what does this repo publish/consume over the network?",
+      description:
+        "Call BEFORE changing route handlers, API schemas (.proto/GraphQL/OpenAPI), response " +
+        "shapes, or event topics. Returns the repo's contract surface: published routes/RPCs/" +
+        "fields (changing these can break consumers in OTHER repos — treat as breaking-change " +
+        "review), consumed endpoints, and pub/sub topics. A static call graph goes dark at the " +
+        "network boundary; this is the map of that boundary.",
+      inputSchema: {},
+    },
+    async () => text(await extractContracts(repoRoot)),
   );
 
   server.registerTool(

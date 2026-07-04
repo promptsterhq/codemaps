@@ -18,6 +18,7 @@ import path from "node:path";
 import { buildRiskIndex, type RepoRiskIndex } from "./risk.js";
 import { loadCodemap, type StoredGuardrail } from "./codemap-store.js";
 import { scanSecurity, type SecurityFinding } from "./security.js";
+import { extractContracts, type ContractSurface } from "./contracts.js";
 import type { MutableGraph } from "./store.js";
 import { impact } from "./query.js";
 
@@ -32,6 +33,7 @@ export interface CheckFinding {
     | "proposed-zone-edit"
     | "guarded-line-touched"
     | "security-surface-touched"
+    | "contract-crossing"
     | "hotspot-edit"
     | "weak-safety-net"
     | "blast-radius";
@@ -125,6 +127,9 @@ export async function runCheck(
   const codemap = await loadCodemap(repoRoot);
   const riskIndex = options.riskIndex ?? (await buildRiskIndex(repoRoot).catch(() => undefined));
   const security: SecurityFinding[] = await scanSecurity(repoRoot, changedFiles).catch(() => []);
+  const contracts: ContractSurface = await extractContracts(repoRoot).catch(
+    () => ({ serves: [], calls: [], events: [], provenance: "heuristic" as const }),
+  );
 
   for (const change of changes) {
     const onFile = codemap.guardrails.filter(
@@ -177,7 +182,39 @@ export async function runCheck(
       });
     }
 
-    // 4. Risk context.
+    // 4. Contract crossing (Impact tier b): a touched hunk overlaps a line
+    //    that defines a PUBLISHED contract — consumers outside this repo may
+    //    break. IDL files count in full (any edit to a .proto/openapi/graphql
+    //    definition file is a contract change).
+    const isIdl = /\.(proto|graphql|gql)$/.test(change.path) || /(^|\/)(openapi|swagger)[^/]*\.(ya?ml|json)$/i.test(change.path);
+    const served = contracts.serves.filter(
+      (s) => s.file === change.path && (isIdl || touches(change.hunks, s.line, 3)),
+    );
+    for (const s of served.slice(0, 8)) {
+      findings.push({
+        severity: "warn",
+        kind: "contract-crossing",
+        file: change.path,
+        line: s.line,
+        message:
+          `edits a PUBLISHED contract ${s.id} (${s.via}, ${Math.round(s.confidence * 100)}% conf) — ` +
+          `consumers outside this repo may depend on it; treat as a breaking-change review`,
+      });
+    }
+    // Consumed side: changing a client call means this repo's expectations of
+    // another service changed — worth a note, not a warning.
+    const called = contracts.calls.filter((c) => c.file === change.path && touches(change.hunks, c.line));
+    for (const c of called.slice(0, 5)) {
+      findings.push({
+        severity: "info",
+        kind: "contract-crossing",
+        file: change.path,
+        line: c.line,
+        message: `changes a call to external contract ${c.id} (${c.via}) — verify the target service's actual behavior`,
+      });
+    }
+
+    // 5. Risk context.
     const risk = riskIndex?.files.get(change.path);
     if (risk) {
       if (risk.hotspotPercentile >= 90) {
@@ -198,7 +235,7 @@ export async function runCheck(
       }
     }
 
-    // 5. Blast radius (info): symbols whose declarations overlap the hunks.
+    // 6. Blast radius (info): symbols whose declarations overlap the hunks.
     if (options.graph) {
       const symbols = [...options.graph.nodes.values()].filter(
         (n) => n.loc?.path === change.path && n.kind !== "file" &&

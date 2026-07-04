@@ -181,3 +181,45 @@ test("security: quiet on benign code (no false-positive storm)", async () => {
   const findings = await scanSecurity(dir, ["calm.ts"]);
   assert.equal(findings.length, 0);
 });
+
+// ---------------------------------------------------------------------------
+// Contract surface — extraction + identity normalization (Impact tier b)
+// ---------------------------------------------------------------------------
+
+test("contracts: normalizeRoute unifies template styles for cross-repo identity", async () => {
+  const { normalizeRoute } = await import("./contracts.js");
+  assert.equal(normalizeRoute("/users/:id"), "/users/{param}");
+  assert.equal(normalizeRoute("/users/{userId}"), "/users/{param}");
+  assert.equal(normalizeRoute("/users/<int:id>"), "/users/{param}");
+  assert.equal(normalizeRoute("/users/:id/"), "/users/{param}");
+});
+
+test("contracts: extracts express routes, proto rpcs, graphql fields, openapi paths", async () => {
+  const { extractContracts } = await import("./contracts.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "codemaps-test-"));
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("git", ["-C", dir, "init", "-q"]); // listRepoFiles uses git ls-files
+
+  await writeFile(path.join(dir, "server.js"),
+    "app.get('/v1/invoices/:id', handler);\napp.post('/v1/invoices', create);\n" +
+    "fetch('https://billing.internal/v1/charge');\nproducer.send({ topic: 'invoice.paid', messages: [] });\n");
+  await writeFile(path.join(dir, "billing.proto"),
+    "syntax = \"proto3\";\npackage billing;\nservice Billing {\n  rpc Finalize (Req) returns (Res);\n}\n");
+  await writeFile(path.join(dir, "schema.graphql"),
+    "type Query {\n  invoice(id: ID!): Invoice\n}\n");
+  await writeFile(path.join(dir, "openapi.yaml"),
+    "openapi: 3.0.0\npaths:\n  /v1/refunds:\n    post:\n      summary: refund\n");
+
+  const s = await extractContracts(dir);
+  const ids = s.serves.map((c) => c.id);
+  assert.ok(ids.includes("http:GET /v1/invoices/{param}"), `express route: ${ids}`);
+  assert.ok(ids.includes("grpc:billing.Billing/Finalize"), `proto rpc: ${ids}`);
+  assert.ok(ids.includes("graphql:Query.invoice"), `graphql field: ${ids}`);
+  assert.ok(ids.includes("http:POST /v1/refunds"), `openapi path: ${ids}`);
+  assert.ok(s.calls.some((c) => c.url.includes("billing.internal")), "http client call");
+  assert.ok(s.events.some((e) => e.role === "publish" && e.topic === "invoice.paid"), "kafka publish");
+  // Typed IDL must outrank heuristic route detection in confidence.
+  const proto = s.serves.find((c) => c.kind === "grpc")!;
+  const express = s.serves.find((c) => c.via === "express-style")!;
+  assert.ok(proto.confidence > express.confidence);
+});

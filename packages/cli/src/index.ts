@@ -21,11 +21,13 @@ import { runExplore } from "./explore-command.js";
 import { runSecurity } from "./security-command.js";
 import { runOrient } from "./orient-command.js";
 import { runCheckCommand } from "./check-command.js";
+import { runContracts } from "./contracts-command.js";
 
 type Command =
   | "risk"
   | "orient"
   | "check"
+  | "contracts"
   | "security"
   | "guardrails"
   | "impact"
@@ -44,6 +46,7 @@ function parse(argv: string[]): { command: Command; rest: string[] } {
   switch (cmd) {
     case "risk":
     case "check":
+    case "contracts":
     case "orient":
     case "security":
     case "guardrails":
@@ -77,7 +80,10 @@ Usage: codemaps <command>
   impact <symbol>    What breaks if I change this? (reverse blast radius)
   locate <query>     Where does this concept live? (symbol/file search)
   check [--base m]   PR gate: did this diff touch zones/invariants/security/
-                     hotspots? Fails only on confirmed do-not-touch edits.
+                     hotspots/published contracts? Fails only on confirmed
+                     do-not-touch edits.
+  contracts          What this repo publishes & consumes over the network
+                     (routes, gRPC, GraphQL, OpenAPI, events)
   index              (Re)build the code graph (.codemaps/graph.json)
   init               Index the repo, generate AGENTS.md, register the MCP server
   serve              Start the local MCP server (agents query the six lenses)
@@ -106,6 +112,9 @@ async function main(): Promise<void> {
       break;
     case "check":
       process.exitCode = await runCheckCommand(rest);
+      break;
+    case "contracts":
+      process.exitCode = await runContracts(rest);
       break;
     case "impact":
       process.exitCode = await runImpact(rest);
