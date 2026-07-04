@@ -11,7 +11,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (90th pct)",
+      "materialWhy": "hotspot (91th pct)",
       "id": "94afdbb78d85",
       "firstSeen": "2026-07-03"
     },
@@ -25,7 +25,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "hotspot (90th pct)",
+      "materialWhy": "hotspot (91th pct)",
       "id": "af4964d4fdf2",
       "firstSeen": "2026-07-03"
     },
@@ -95,7 +95,7 @@
       "provenance": "mined",
       "confidence": 0.55,
       "material": true,
-      "materialWhy": "single-owner (bus-factor 1)",
+      "materialWhy": "hotspot (76th pct)",
       "id": "4ae455d57c31",
       "firstSeen": "2026-07-04"
     },

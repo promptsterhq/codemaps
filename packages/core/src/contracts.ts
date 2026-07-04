@@ -118,6 +118,12 @@ const EVENT_RULES: { pattern: RegExp; role: "publish" | "subscribe"; via: string
 
 const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"]);
 
+/** Contracts in test files aren't published/consumed by the running service. */
+const TEST_FILE = /(\.test\.|\.spec\.|__tests__\/|(^|\/)tests?\/|(^|\/)test_[^/]+\.py$|_test\.(py|go|ts|js)$)/;
+
+/** Comment lines describe contracts; they don't serve them. */
+const COMMENT_LINE = /^\s*(\/\/|\*|#|\/\*)/;
+
 // ---------------------------------------------------------------------------
 // Extraction
 // ---------------------------------------------------------------------------
@@ -145,7 +151,7 @@ export async function extractContracts(repoRoot: string): Promise<ContractSurfac
       continue;
     }
 
-    if (!SOURCE_EXT.has(ext)) continue;
+    if (!SOURCE_EXT.has(ext) || TEST_FILE.test(rel)) continue;
     let source: string;
     try {
       source = await readFile(path.join(repoRoot, rel), "utf8");
@@ -155,7 +161,7 @@ export async function extractContracts(repoRoot: string): Promise<ContractSurfac
     const lines = source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
-      if (line.length > 400) continue;
+      if (line.length > 400 || COMMENT_LINE.test(line)) continue;
 
       for (const rule of SERVE_RULES) {
         const m = line.match(rule.pattern);
