@@ -1,7 +1,7 @@
 {
   "name": "@codemaps/mcp",
   "version": "0.1.0",
-  "description": "Codemaps MCP server \u2014 exposes the six lenses as agent-callable tools.",
+  "description": "Codemaps MCP server \u2014 the six lenses as MCP tools for Claude Code, Cursor, Copilot, and any MCP agent.",
   "type": "module",
   "exports": {
     ".": {
@@ -35,5 +35,11 @@
   "homepage": "https://github.com/promptsterhq/codemaps#readme",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "code-analysis"
+  ]
 }

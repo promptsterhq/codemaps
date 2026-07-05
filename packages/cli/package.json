@@ -1,7 +1,7 @@
 {
   "name": "@codemaps/cli",
   "version": "0.1.0",
-  "description": "Codemaps CLI \u2014 npx codemaps: index a repo, generate AGENTS.md, serve context to agents.",
+  "description": "Codemaps CLI \u2014 map any repo for AI coding agents: risk, guardrails, blast radius, contracts, MCP server, agent hooks.",
   "type": "module",
   "bin": {
     "codemaps": "./dist/index.js"
@@ -31,5 +31,13 @@
   "homepage": "https://github.com/promptsterhq/codemaps#readme",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "claude-code",
+    "cursor",
+    "cli",
+    "agents-md"
+  ]
 }

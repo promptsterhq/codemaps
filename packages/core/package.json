@@ -1,7 +1,7 @@
 {
   "name": "@codemaps/core",
   "version": "0.1.0",
-  "description": "Codemaps context engine: code graph, behavioral layer, and the six lenses.",
+  "description": "The Codemaps context engine \u2014 six lenses (orient/locate/impact/guardrails/risk/security) over a multi-language code graph.",
   "type": "module",
   "exports": {
     ".": {
@@ -37,5 +37,12 @@
   "homepage": "https://github.com/promptsterhq/codemaps#readme",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": [
+    "code-graph",
+    "tree-sitter",
+    "static-analysis",
+    "ai-agents",
+    "context"
+  ]
 }
