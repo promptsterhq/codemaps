@@ -319,6 +319,54 @@ test("contracts: Go routers/stdlib + Spring annotations and clients", async () =
   assert.ok(callIds.includes("http:POST /v1/charges"), `webClient chain: ${callIds}`);
 });
 
+test("go indexer: symbols, receiver methods, imports, conservative calls, impact", async () => {
+  const { indexGo } = await import("./go-indexer.js");
+  const { impact } = await import("./query.js");
+  const { MutableGraph } = await import("./store.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "codemaps-test-"));
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("git", ["-C", dir, "init", "-q"]);
+
+  await writeFile(path.join(dir, "go.mod"), "module example.com/acme/billing\n\ngo 1.22\n");
+  await mkdir(path.join(dir, "internal/store"), { recursive: true });
+  await writeFile(
+    path.join(dir, "internal/store/store.go"),
+    'package store\n\ntype Store struct{}\n\ntype Saver interface{ Save() error }\n\nfunc NewStore() *Store { return &Store{} }\n\nfunc (s *Store) Save() error { return nil }\n',
+  );
+  await writeFile(
+    path.join(dir, "main.go"),
+    'package main\n\nimport (\n\t"example.com/acme/billing/internal/store"\n)\n\nfunc main() {\n\ts := store.NewStore()\n\t_ = s.Save()\n}\n',
+  );
+
+  const r = await indexGo(dir);
+  const ids = r.nodes.map((n) => n.id);
+  assert.ok(ids.includes("go:internal/store/store.go#Store"), `struct: ${ids}`);
+  assert.ok(ids.includes("go:internal/store/store.go#Saver"), `interface: ${ids}`);
+  assert.ok(ids.includes("go:internal/store/store.go#NewStore"), `function: ${ids}`);
+  assert.ok(ids.includes("go:internal/store/store.go#Store.Save"), `receiver method: ${ids}`);
+  const iface = r.nodes.find((n) => n.id.endsWith("#Saver"));
+  assert.equal(iface!.kind, "interface");
+
+  // Import edge: main.go -> the store package's file.
+  assert.ok(
+    r.edges.some((e) => e.from === "file:main.go" && e.to === "file:internal/store/store.go" && e.kind === "imports"),
+    `import edge: ${JSON.stringify(r.edges)}`,
+  );
+  // Conservative call edges: NewStore and Save are unique names -> edges.
+  assert.ok(
+    r.edges.some((e) => e.from === "file:main.go" && e.to === "go:internal/store/store.go#NewStore" && e.kind === "calls"),
+    `call edge: ${JSON.stringify(r.edges)}`,
+  );
+
+  // And impact answers the Go question end-to-end.
+  const g = new MutableGraph();
+  for (const n of r.nodes) g.addNode(n);
+  for (const e of r.edges) g.addEdge(e);
+  const blast = impact(g, "go:internal/store/store.go#NewStore");
+  assert.ok(blast);
+  assert.ok(blast!.directDependents.some((n) => n.id === "file:main.go"), "main.go depends on NewStore");
+});
+
 // ---------------------------------------------------------------------------
 // Cross-repo stitching — the Phase 3 headline moat, tested with zero cloud
 // ---------------------------------------------------------------------------
