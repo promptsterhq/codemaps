@@ -35,6 +35,23 @@ This repo dogfoods itself: Codemaps hooks run on every agent edit here, and
 `codemap/guardrails.json` is the live guardrail store — treat its warnings as
 you'd want your users to.
 
+## Adding a language or framework detector — the ideal first PR
+
+Language support is per-lens; the cheapest, highest-impact additions are
+**contract detectors** (a router/framework pattern in
+`packages/core/src/contracts.ts`) and **guardrail/manifest conventions**.
+The recipe:
+
+1. Find the real-world pattern the lens misses (or open a
+   [detector request](https://github.com/promptsterhq/codemaps/issues/new?template=lens_request.yml)
+   first to check fit).
+2. Add the rule — line-based detectors go in `SERVE_RULES`/`CALL_RULES`/
+   `EVENT_RULES`; path-based ones (like Next.js) get a file-level function.
+3. Add a fixture test in `packages/core/src/core.test.ts` (see the
+   `contracts:` tests for the shape — temp git repo, real snippet, assert ids).
+4. Precision over recall: a detector that's quiet on code it doesn't
+   understand beats one that guesses. Confidence scores are honest scores.
+
 ## What makes a good PR
 
 - Lens correctness > lens breadth. A detector that's precise on one framework

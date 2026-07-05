@@ -42,7 +42,7 @@ Working pre-alpha — **all six lenses live, end-to-end locally testable.**
 pnpm install && pnpm build
 cd packages/cli && npm link       # puts `codemaps` on your PATH
 
-# then in any TS/Python git repo:
+# then in any git repo:
 codemaps init            # risk + guardrails + graph + AGENTS.md (+ CLAUDE.md bridge)
 codemaps orient          # what is this system? components, entry points, comms
 codemaps risk <path>     # hotspot pct, churn, owners, bus-factor, coverage + warnings
@@ -62,6 +62,27 @@ codemaps init --hooks    # PreToolUse hook: warns on hotspots/invariants,
 
 **Benchmark evidence** (same model, same prompt; [`bench/ANALYSIS.md`](bench/ANALYSIS.md)): on the lockfile trap the baseline agent hand-edited `pnpm-lock.yaml` while the Codemaps arm refused, cited the guardrail, and finished 2× faster. On the security trap both arms initially removed a path-traversal guard — which drove the Security lens (consequence-enriched invariants); on re-run the agent flagged the risk, named the `../../etc/passwd` attack, and proposed a safe alternative. **2/6 violations avoided, 0 regressions, n=1 per cell (early).**
 
+
+## Language support
+
+Support is **per-lens, not all-or-nothing** — the lens that needs the least
+parsing works everywhere, and depth increases from there:
+
+| Lens | Languages | Why |
+|------|-----------|-----|
+| **Risk** (hotspots, churn, ownership, bus-factor) | **Any git repo, any language** | Mined from git history — never parses code |
+| **Guardrails** (do-not-touch zones, invariants) | TS/JS, Python, Go, Ruby, Java, Rust, C# | Comment/assert conventions per language |
+| **Contracts** (serves / calls / events) | Express-style routers, NestJS, **Next.js** (App Router + `pages/api`), FastAPI/Flask — plus `.proto`, GraphQL, OpenAPI (language-neutral IDL) | Thin per-framework detectors |
+| **Orient** (components, entry points) | JS/TS + Python manifests | Manifest-driven |
+| **Impact / Locate** (code graph, blast radius) | TypeScript/JavaScript + Python | Real per-language indexers (TS compiler API / tree-sitter) |
+| **Security** (beta) | TS/JS + Python heuristics | Per-language sink/guard patterns |
+
+More languages are grammar work, not architecture — the Python indexer already
+runs on web-tree-sitter, which has prebuilt grammars for dozens of languages.
+**Framework detectors are the easiest contribution we take**: open a
+[detector request](https://github.com/promptsterhq/codemaps/issues/new?template=lens_request.yml)
+with a minimal missed-pattern snippet, or send the PR — pattern + fixture test
+(see `contracts:` tests in `packages/core/src/core.test.ts` for the shape).
 
 ## Repo layout
 
