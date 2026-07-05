@@ -99,13 +99,89 @@ const SERVE_RULES: ServeRule[] = [
     confidence: 0.8,
     extract: (m) => ({ method: m[1]!.toLowerCase() === "route" ? "ANY" : m[1]!.toUpperCase(), route: m[2]! }),
   },
+  {
+    // Go routers — gin/echo (r.GET("/x")), chi/fiber (r.Get("/x")). Any
+    // receiver; exact case distinguishes from express-style lowercase .get().
+    pattern: /\b\w+\.(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|Get|Post|Put|Patch|Delete|Head|Options)\s*\(\s*"(\/[^"]*)"/,
+    via: "go-router",
+    confidence: 0.75,
+    extract: (m) => ({ method: m[1]!.toUpperCase(), route: m[2]! }),
+  },
+  {
+    // Go stdlib/gorilla: mux.HandleFunc("GET /x") (1.22+ method-in-pattern)
+    // or HandleFunc("/x") — method unknowable statically -> ANY.
+    pattern: /\b\w+\.(?:HandleFunc|Handle)\s*\(\s*"((?:(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) )?\/[^"]*)"/,
+    via: "go-http",
+    confidence: 0.7,
+    extract: (m) => {
+      const sp = m[1]!.match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) (.+)$/);
+      return sp ? { method: sp[1]!, route: sp[2]! } : { method: "ANY", route: m[1]! };
+    },
+  },
+  {
+    // Spring: @GetMapping("/x"), @PostMapping(value = "/x"),
+    // @RequestMapping(path = "/x", method = RequestMethod.PUT).
+    // Bare class-level @RequestMapping("/base") is a PREFIX, not an endpoint —
+    // emitted only when a RequestMethod is present (precision over recall).
+    pattern: /@(Get|Post|Put|Patch|Delete|Request)Mapping\s*\(\s*(?:value\s*=\s*|path\s*=\s*)?"([^"]+)"/,
+    via: "spring",
+    confidence: 0.7,
+    extract: (m) => {
+      if (m[1] !== "Request") return { method: m[1]!.toUpperCase(), route: m[2]! };
+      const rm = m.input?.match(/RequestMethod\.(\w+)/);
+      return rm ? { method: rm[1]!.toUpperCase(), route: m[2]! } : null;
+    },
+  },
 ];
 
-const CALL_RULES: { pattern: RegExp; via: string; confidence: number }[] = [
+interface CallRule {
+  pattern: RegExp;
+  via: string;
+  confidence: number;
+  /** Optional custom mapping when the 2-group (method?, url) contract doesn't fit. */
+  extract?: (m: RegExpMatchArray) => { method: string; url: string } | null;
+}
+
+const CALL_RULES: CallRule[] = [
   // fetch/axios/got/requests/httpx with an absolute-or-rooted URL literal
   { pattern: /\bfetch\s*\(\s*[`'"](https?:\/\/[^'"`\s]+|\/[^'"`\s]*)[`'"]/, via: "fetch", confidence: 0.7 },
   { pattern: /\baxios\.(get|post|put|patch|delete)\s*\(\s*[`'"](https?:\/\/[^'"`\s]+|\/[^'"`\s]*)[`'"]/, via: "axios", confidence: 0.75 },
   { pattern: /\b(?:requests|httpx)\.(get|post|put|patch|delete)\s*\(\s*['"](https?:\/\/[^'"\s]+|\/[^'"\s]*)['"]/, via: "python-http", confidence: 0.75 },
+  // Go stdlib client: http.Get("https://…"), http.Post("…", …)
+  {
+    pattern: /\bhttp\.(Get|Post|Head)\s*\(\s*"((?:https?:\/\/|\/)[^"]*)"/,
+    via: "go-http-client",
+    confidence: 0.75,
+    extract: (m) => ({ method: m[1]!.toUpperCase(), url: m[2]! }),
+  },
+  // Go: http.NewRequest("POST", url, …) / NewRequestWithContext(ctx, http.MethodPost, url, …)
+  {
+    pattern: /\bhttp\.NewRequest(?:WithContext)?\s*\(\s*(?:\w+\s*,\s*)?(?:"(GET|POST|PUT|PATCH|DELETE|HEAD)"|http\.Method(Get|Post|Put|Patch|Delete|Head))\s*,\s*"((?:https?:\/\/|\/)[^"]*)"/,
+    via: "go-http-client",
+    confidence: 0.75,
+    extract: (m) => ({ method: (m[1] ?? m[2])!.toUpperCase(), url: m[3]! }),
+  },
+  // Spring RestTemplate: getForObject/getForEntity/postForObject/postForEntity — any receiver
+  {
+    pattern: /\.(get|post)For(?:Object|Entity)\s*\(\s*"((?:https?:\/\/|\/)[^"]*)"/,
+    via: "spring-resttemplate",
+    confidence: 0.75,
+    extract: (m) => ({ method: m[1]!.toUpperCase(), url: m[2]! }),
+  },
+  // Spring RestTemplate.exchange(url, HttpMethod.X, …)
+  {
+    pattern: /\.exchange\s*\(\s*"((?:https?:\/\/|\/)[^"]*)"\s*,\s*HttpMethod\.(\w+)/,
+    via: "spring-resttemplate",
+    confidence: 0.75,
+    extract: (m) => ({ method: m[2]!.toUpperCase(), url: m[1]! }),
+  },
+  // Spring WebClient: webClient.get().uri("…")
+  {
+    pattern: /\.(get|post|put|patch|delete)\s*\(\s*\)\s*\.uri\s*\(\s*"((?:https?:\/\/|\/)[^"]*)"/,
+    via: "spring-webclient",
+    confidence: 0.75,
+    extract: (m) => ({ method: m[1]!.toUpperCase(), url: m[2]! }),
+  },
 ];
 
 const EVENT_RULES: { pattern: RegExp; role: "publish" | "subscribe"; via: string; confidence: number }[] = [
@@ -116,7 +192,7 @@ const EVENT_RULES: { pattern: RegExp; role: "publish" | "subscribe"; via: string
   { pattern: /queue\.add\s*\(\s*['"`]([^'"`]+)['"`]/, role: "publish", via: "bullmq", confidence: 0.6 },
 ];
 
-const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"]);
+const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".go", ".java", ".kt"]);
 
 /** Contracts in test files aren't published/consumed by the running service. */
 const TEST_FILE = /(\.test\.|\.spec\.|__tests__\/|(^|\/)tests?\/|(^|\/)test_[^/]+\.py$|_test\.(py|go|ts|js)$)/;
@@ -258,8 +334,16 @@ export async function extractContracts(repoRoot: string): Promise<ContractSurfac
       for (const rule of CALL_RULES) {
         const m = line.match(rule.pattern);
         if (!m) continue;
-        const url = m[2] ?? m[1]!;
-        let method = (m[2] ? m[1]! : "GET").toUpperCase();
+        let url: string;
+        let method: string;
+        if (rule.extract) {
+          const ex = rule.extract(m);
+          if (!ex) continue;
+          ({ url, method } = ex);
+        } else {
+          url = m[2] ?? m[1]!;
+          method = (m[2] ? m[1]! : "GET").toUpperCase();
+        }
         if (rule.via === "fetch") {
           // fetch's method lives in the options object — same line or the next
           // (typical wrap point). Without this every fetch reads as GET and
@@ -312,11 +396,21 @@ export function normalizeRoute(route: string): string {
 
 function pathOf(url: string): string {
   // Query/hash never participate in route identity: /api/x?y=1 serves as /api/x.
+  // new URL() percent-encodes template braces ({id} -> %7Bid%7D) — decode so
+  // route templates in absolute URLs keep their identity.
   try {
     const p = url.startsWith("/") ? url : new URL(url).pathname;
-    return p.split(/[?#]/)[0]!;
+    return tryDecode(p.split(/[?#]/)[0]!);
   } catch {
     return url.split(/[?#]/)[0]!;
+  }
+}
+
+function tryDecode(p: string): string {
+  try {
+    return decodeURIComponent(p);
+  } catch {
+    return p;
   }
 }
 

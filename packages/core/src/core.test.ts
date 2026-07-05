@@ -276,6 +276,49 @@ test("contracts: fetch method from options + query strings out of identity", asy
   assert.ok(ids.includes("http:GET /api/map-data"), `query string stripped: ${ids}`);
 });
 
+test("contracts: Go routers/stdlib + Spring annotations and clients", async () => {
+  const { extractContracts } = await import("./contracts.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "codemaps-test-"));
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("git", ["-C", dir, "init", "-q"]);
+
+  await writeFile(
+    path.join(dir, "main.go"),
+    'r.GET("/v1/users/:id", getUser)\n' + // gin/echo
+      'r.Post("/v1/orders", createOrder)\n' + // chi/fiber
+      'mux.HandleFunc("GET /healthz", health)\n' + // stdlib 1.22 method-in-pattern
+      'http.HandleFunc("/legacy", legacy)\n' + // stdlib classic -> ANY
+      'resp, err := http.Get("https://billing.internal/v1/invoices")\n' +
+      'req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "https://billing.internal/v1/invoices", body)\n',
+  );
+  await writeFile(
+    path.join(dir, "AccountController.java"),
+    '@GetMapping("/v1/accounts/{id}")\n' +
+      '@PostMapping(value = "/v1/accounts")\n' +
+      '@RequestMapping(path = "/v1/legacy", method = RequestMethod.PUT)\n' +
+      '@RequestMapping("/v1/base")\n' + // class-level prefix: must NOT emit
+      'restTemplate.getForObject("https://billing.internal/v1/invoices/{id}", Invoice.class);\n' +
+      'webClient.post().uri("/v1/charges").retrieve();\n',
+  );
+
+  const s = await extractContracts(dir);
+  const ids = s.serves.map((c) => c.id);
+  assert.ok(ids.includes("http:GET /v1/users/{param}"), `gin route: ${ids}`);
+  assert.ok(ids.includes("http:POST /v1/orders"), `chi route: ${ids}`);
+  assert.ok(ids.includes("http:GET /healthz"), `go 1.22 method-in-pattern: ${ids}`);
+  assert.ok(ids.includes("http:ANY /legacy"), `stdlib HandleFunc: ${ids}`);
+  assert.ok(ids.includes("http:GET /v1/accounts/{param}"), `spring @GetMapping: ${ids}`);
+  assert.ok(ids.includes("http:POST /v1/accounts"), `spring value=: ${ids}`);
+  assert.ok(ids.includes("http:PUT /v1/legacy"), `spring @RequestMapping+method: ${ids}`);
+  assert.ok(!ids.some((i) => i.endsWith(" /v1/base")), `class-level prefix must not emit: ${ids}`);
+
+  const callIds = s.calls.map((c) => c.id);
+  assert.ok(callIds.includes("http:GET /v1/invoices"), `go http.Get: ${callIds}`);
+  assert.ok(callIds.includes("http:POST /v1/invoices"), `go NewRequestWithContext const: ${callIds}`);
+  assert.ok(callIds.includes("http:GET /v1/invoices/{param}"), `restTemplate: ${callIds}`);
+  assert.ok(callIds.includes("http:POST /v1/charges"), `webClient chain: ${callIds}`);
+});
+
 // ---------------------------------------------------------------------------
 // Cross-repo stitching — the Phase 3 headline moat, tested with zero cloud
 // ---------------------------------------------------------------------------
