@@ -7,6 +7,7 @@ import { MutableGraph } from "./store.js";
 import { indexTypeScript } from "./ts-indexer.js";
 import { indexPython } from "./py-indexer.js";
 import { indexGo } from "./go-indexer.js";
+import { indexJava, indexKotlin } from "./jvm-indexer.js";
 
 export interface RepoIndexResult {
   graph: MutableGraph;
@@ -26,10 +27,12 @@ export async function indexRepo(repoRoot: string): Promise<RepoIndexResult> {
   let symbolCount = ts.symbolCount;
   if (ts.fileCount > 0) languages.push("typescript");
 
-  // Python + Go (WASM tree-sitter) — merged into the same graph.
+  // Python + Go + JVM (WASM tree-sitter) — merged into the same graph.
   for (const [name, index] of [
     ["python", indexPython],
     ["go", indexGo],
+    ["java", indexJava],
+    ["kotlin", indexKotlin],
   ] as const) {
     const result = await index(repoRoot);
     if (result.fileCount === 0) continue;

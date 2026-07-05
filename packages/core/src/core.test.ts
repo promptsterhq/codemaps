@@ -367,6 +367,67 @@ test("go indexer: symbols, receiver methods, imports, conservative calls, impact
   assert.ok(blast!.directDependents.some((n) => n.id === "file:main.go"), "main.go depends on NewStore");
 });
 
+test("jvm indexer: Java + Kotlin symbols, imports, conservative calls", async () => {
+  const { indexJava, indexKotlin } = await import("./jvm-indexer.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "codemaps-test-"));
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("git", ["-C", dir, "init", "-q"]);
+
+  await mkdir(path.join(dir, "src/main/java/com/acme/store"), { recursive: true });
+  await writeFile(
+    path.join(dir, "src/main/java/com/acme/store/Store.java"),
+    "package com.acme.store;\n\npublic class Store {\n  public Store() {}\n  public void save() {}\n}\n\ninterface Saver { void save(); }\n",
+  );
+  await mkdir(path.join(dir, "src/main/java/com/acme/app"), { recursive: true });
+  await writeFile(
+    path.join(dir, "src/main/java/com/acme/app/Main.java"),
+    "package com.acme.app;\n\nimport com.acme.store.Store;\n\npublic class Main {\n  void run() {\n    Store s = new Store();\n    s.persistAll();\n  }\n}\n",
+  );
+  await mkdir(path.join(dir, "src/main/kotlin/com/acme/billing"), { recursive: true });
+  await writeFile(
+    path.join(dir, "src/main/kotlin/com/acme/billing/Invoice.kt"),
+    "package com.acme.billing\n\nclass Invoice {\n  fun finalizeTotal() {}\n}\n\nfun newInvoice(): Invoice = Invoice()\n",
+  );
+  await writeFile(
+    path.join(dir, "src/main/kotlin/com/acme/billing/Runner.kt"),
+    "package com.acme.billing\n\nimport com.acme.billing.Invoice\n\nfun run() {\n  val inv = newInvoice()\n  inv.finalizeTotal()\n}\n",
+  );
+
+  const j = await indexJava(dir);
+  const jids = j.nodes.map((n) => n.id);
+  const javaPrefix = "java:src/main/java/com/acme/store/Store.java";
+  assert.ok(jids.includes(`${javaPrefix}#Store`), `java class: ${jids}`);
+  assert.ok(jids.includes(`${javaPrefix}#Store.save`), `java method: ${jids}`);
+  assert.ok(jids.includes(`${javaPrefix}#Saver`), `java interface: ${jids}`);
+  assert.equal(j.nodes.find((n) => n.id.endsWith("#Saver"))!.kind, "interface");
+  assert.ok(
+    j.edges.some(
+      (e) => e.from === "file:src/main/java/com/acme/app/Main.java" && e.to === "file:src/main/java/com/acme/store/Store.java" && e.kind === "imports",
+    ),
+    `java import edge across source roots: ${JSON.stringify(j.edges)}`,
+  );
+  // `new Store()` resolves as a call to the unique Store class.
+  assert.ok(
+    j.edges.some((e) => e.from === "file:src/main/java/com/acme/app/Main.java" && e.to === `${javaPrefix}#Store` && e.kind === "calls"),
+    `constructor call edge: ${JSON.stringify(j.edges)}`,
+  );
+
+  const k = await indexKotlin(dir);
+  const kids = k.nodes.map((n) => n.id);
+  const ktPrefix = "kt:src/main/kotlin/com/acme/billing/Invoice.kt";
+  assert.ok(kids.includes(`${ktPrefix}#Invoice`), `kotlin class: ${kids}`);
+  assert.ok(kids.includes(`${ktPrefix}#Invoice.finalizeTotal`), `kotlin method: ${kids}`);
+  assert.ok(kids.includes(`${ktPrefix}#newInvoice`), `kotlin top-level fn: ${kids}`);
+  assert.ok(
+    k.edges.some((e) => e.from === "file:src/main/kotlin/com/acme/billing/Runner.kt" && e.to === `${ktPrefix}#newInvoice` && e.kind === "calls"),
+    `kotlin call edge: ${JSON.stringify(k.edges)}`,
+  );
+  assert.ok(
+    k.edges.some((e) => e.from === "file:src/main/kotlin/com/acme/billing/Runner.kt" && e.to === `${ktPrefix}#Invoice.finalizeTotal` && e.kind === "calls"),
+    `kotlin navigation call edge: ${JSON.stringify(k.edges)}`,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // Cross-repo stitching — the Phase 3 headline moat, tested with zero cloud
 // ---------------------------------------------------------------------------

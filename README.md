@@ -49,7 +49,7 @@ codemaps risk <path>     # hotspot pct, churn, owners, bus-factor, coverage + wa
 codemaps guardrails <p>  # do-not-touch zones + mined invariants (materiality-gated)
 codemaps guardrails confirm <id>   # promote to human-confirmed (durable, versioned in codemap/)
 codemaps security <path> # (beta) traversal guards, auth gates, sinks, secrets — with consequences
-codemaps impact <symbol> # reverse blast radius + affected tests (TS/JS, Python, Go)
+codemaps impact <symbol> # reverse blast radius + affected tests (TS/JS, Python, Go, Java, Kotlin)
 codemaps locate <query>  # ranked symbol/file search
 codemaps serve           # MCP server: all six lenses for any MCP agent
 codemaps explore         # localhost dashboard: risk table, guardrail confirm/reject, impact search
@@ -74,7 +74,7 @@ parsing works everywhere, and depth increases from there:
 | **Guardrails** (do-not-touch zones, invariants) | TS/JS, Python, Go, Ruby, Java, Rust, C# | Comment/assert conventions per language |
 | **Contracts** (serves / calls / events) | Express-style routers, NestJS, **Next.js** (App Router + `pages/api`), FastAPI/Flask — plus `.proto`, GraphQL, OpenAPI (language-neutral IDL) | Thin per-framework detectors |
 | **Orient** (components, entry points) | JS/TS + Python manifests | Manifest-driven |
-| **Impact / Locate** (code graph, blast radius) | TypeScript/JavaScript, Python, **Go** | Real per-language indexers (TS compiler API / tree-sitter) |
+| **Impact / Locate** (code graph, blast radius) | TypeScript/JavaScript, Python, **Go**, **Java**, **Kotlin** | Real per-language indexers (TS compiler API / tree-sitter) |
 | **Security** (beta) | TS/JS + Python heuristics | Per-language sink/guard patterns |
 
 More languages are grammar work, not architecture — the Python indexer already
