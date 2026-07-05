@@ -256,6 +256,26 @@ test("contracts: Next.js routes — App Router file paths + pages/api", async ()
   assert.ok(!s.serves.some((c) => c.file === "lib/route.ts"), "route.ts outside app/ must not match");
 });
 
+test("contracts: fetch method from options + query strings out of identity", async () => {
+  const { extractContracts } = await import("./contracts.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "codemaps-test-"));
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("git", ["-C", dir, "init", "-q"]);
+
+  await writeFile(
+    path.join(dir, "client.ts"),
+    'fetch("/api/stitch-org", { method: "POST", headers: { a: "b" } });\n' +
+      'fetch("/api/snapshots",\n  { method: "POST" });\n' + // options on the next line
+      "fetch(`/api/map-data?org=${orgId}&window=7d`);\n",
+  );
+
+  const s = await extractContracts(dir);
+  const ids = s.calls.map((c) => c.id);
+  assert.ok(ids.includes("http:POST /api/stitch-org"), `same-line method: ${ids}`);
+  assert.ok(ids.includes("http:POST /api/snapshots"), `next-line method: ${ids}`);
+  assert.ok(ids.includes("http:GET /api/map-data"), `query string stripped: ${ids}`);
+});
+
 // ---------------------------------------------------------------------------
 // Cross-repo stitching — the Phase 3 headline moat, tested with zero cloud
 // ---------------------------------------------------------------------------
@@ -278,8 +298,13 @@ test("stitch: joins caller repo to provider repo on contract identity", async ()
         serves: [
           { kind: "http" as const, id: "http:POST /v1/invoices", method: "POST", route: "/v1/invoices", file: "src/routes.ts", line: 7, via: "express-style", confidence: 0.8 },
           { kind: "http" as const, id: "http:GET /v1/health", method: "GET", route: "/v1/health", file: "src/routes.ts", line: 3, via: "express-style", confidence: 0.8 },
+          { kind: "http" as const, id: "http:GET /v1/self", method: "GET", route: "/v1/self", file: "src/routes.ts", line: 9, via: "express-style", confidence: 0.8 },
         ],
-        calls: [{ kind: "http" as const, id: "http:GET /never-indexed", method: "GET", url: "https://stripe.com/never-indexed", file: "src/pay.ts", line: 5, via: "fetch", confidence: 0.7 }],
+        calls: [
+          { kind: "http" as const, id: "http:GET /never-indexed", method: "GET", url: "https://stripe.com/never-indexed", file: "src/pay.ts", line: 5, via: "fetch", confidence: 0.7 },
+          // Self-call: same-repo consumption must not surface as an unconsumed serve.
+          { kind: "http" as const, id: "http:GET /v1/self", method: "GET", url: "/v1/self", file: "src/cron.ts", line: 2, via: "fetch", confidence: 0.7 },
+        ],
         events: [{ role: "publish" as const, id: "event:invoice.paid", topic: "invoice.paid", file: "src/emit.ts", line: 20, via: "kafka", confidence: 0.7 }],
         provenance: "heuristic" as const,
       },
@@ -306,6 +331,9 @@ test("stitch: joins caller repo to provider repo on contract identity", async ()
   // The raw url (with host) rides along — contractId strips it, classifiers need it.
   assert.equal(dangle!.url, "https://stripe.com/never-indexed");
   assert.ok(graph.unconsumedServes.some((u) => u.contractId === "http:GET /v1/health"));
+  // Self-consumed serve is not a dead surface; self-call is not dangling.
+  assert.ok(!graph.unconsumedServes.some((u) => u.contractId === "http:GET /v1/self"));
+  assert.ok(!graph.danglingCalls.some((d) => d.contractId === "http:GET /v1/self"));
 
   // The money question: change POST /v1/invoices in billing -> who breaks?
   const impact = crossRepoImpact(graph, "acme/billing", "http:POST /v1/invoices");

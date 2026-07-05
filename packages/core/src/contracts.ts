@@ -259,7 +259,15 @@ export async function extractContracts(repoRoot: string): Promise<ContractSurfac
         const m = line.match(rule.pattern);
         if (!m) continue;
         const url = m[2] ?? m[1]!;
-        const method = (m[2] ? m[1]! : "GET").toUpperCase();
+        let method = (m[2] ? m[1]! : "GET").toUpperCase();
+        if (rule.via === "fetch") {
+          // fetch's method lives in the options object — same line or the next
+          // (typical wrap point). Without this every fetch reads as GET and
+          // POST calls can never join their serves.
+          const near = `${line} ${lines[i + 1] ?? ""}`;
+          const mm = near.match(/method\s*:\s*['"`](GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)['"`]/i);
+          if (mm) method = mm[1]!.toUpperCase();
+        }
         calls.push({
           kind: "http",
           id: `http:${method} ${normalizeRoute(pathOf(url))}`,
@@ -303,10 +311,12 @@ export function normalizeRoute(route: string): string {
 }
 
 function pathOf(url: string): string {
+  // Query/hash never participate in route identity: /api/x?y=1 serves as /api/x.
   try {
-    return url.startsWith("/") ? url : new URL(url).pathname;
+    const p = url.startsWith("/") ? url : new URL(url).pathname;
+    return p.split(/[?#]/)[0]!;
   } catch {
-    return url;
+    return url.split(/[?#]/)[0]!;
   }
 }
 

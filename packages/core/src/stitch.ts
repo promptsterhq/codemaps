@@ -69,9 +69,12 @@ export function stitchServiceGraph(surfaces: RepoSurface[]): ServiceGraph {
       const matches = providers.get(call.id) ?? [];
       const external = matches.filter((m) => m.repo !== repo);
       if (external.length === 0) {
-        // Same-repo self-calls are in-repo graph territory, not service edges.
+        // Same-repo self-calls are in-repo graph territory, not service edges —
+        // but a self-consumed serve is NOT a dead surface: mark it consumed.
         if (matches.length === 0) {
           dangling.push({ repo, contractId: call.id, file: call.file, line: call.line, url: call.url });
+        } else {
+          for (const m of matches) consumed.add(`${m.repo}|${m.serve.id}`);
         }
         continue;
       }
