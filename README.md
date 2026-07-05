@@ -38,9 +38,7 @@ Codemaps answers the questions a senior/principal/security engineer needs to cha
 Working pre-alpha — **all six lenses live, end-to-end locally testable.**
 
 ```bash
-# one-time setup from a clone:
-pnpm install && pnpm build
-cd packages/cli && npm link       # puts `codemaps` on your PATH
+npm install -g @codemaps/cli      # or: npx @codemaps/cli <command>
 
 # then in any git repo:
 codemaps init            # risk + guardrails + graph + AGENTS.md (+ CLAUDE.md bridge)
