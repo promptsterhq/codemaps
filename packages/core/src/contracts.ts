@@ -125,6 +125,79 @@ const TEST_FILE = /(\.test\.|\.spec\.|__tests__\/|(^|\/)tests?\/|(^|\/)test_[^/]
 const COMMENT_LINE = /^\s*(\/\/|\*|#|\/\*)/;
 
 // ---------------------------------------------------------------------------
+// Next.js — the route is the FILE PATH, not a line pattern, so these are
+// file-level detectors rather than SERVE_RULES entries.
+// ---------------------------------------------------------------------------
+
+/** App Router handler: {...}/app/{segments}/route.ts exporting GET/POST/… */
+const NEXT_APP_ROUTE_FILE = /(?:^|\/)app\/(?:(.+)\/)?route\.(?:ts|tsx|js|jsx|mjs)$/;
+const NEXT_METHOD_EXPORT =
+  /^export\s+(?:async\s+)?(?:function\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b|const\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*=)/;
+/** Pages Router API file: {...}/pages/api/{path}.ts with a default-export handler. */
+const NEXT_PAGES_API_FILE = /(?:^|\/)pages\/api\/(.+)\.(?:ts|tsx|js|jsx|mjs)$/;
+/** [id], [...slug], [[...slug]] — Next's dynamic-segment spellings. */
+const NEXT_DYNAMIC_SEGMENT = /^\[{1,2}\.{0,3}[^\]]+\]{1,2}$/;
+
+/** app-dir segments -> URL path: drop (groups) and @slots, brackets -> {param}. */
+function nextRouteFromSegments(middle: string | undefined): string | null {
+  if (!middle) return "/";
+  const out: string[] = [];
+  for (const seg of middle.split("/")) {
+    if (!seg || (seg.startsWith("(") && seg.endsWith(")")) || seg.startsWith("@")) continue;
+    if (seg.includes("(")) return null; // intercepting routes — skip, precision over recall
+    out.push(NEXT_DYNAMIC_SEGMENT.test(seg) ? "{param}" : seg);
+  }
+  return `/${out.join("/")}`;
+}
+
+function nextServes(rel: string, lines: string[]): ServedContract[] {
+  const serves: ServedContract[] = [];
+  const app = rel.match(NEXT_APP_ROUTE_FILE);
+  if (app) {
+    const route = nextRouteFromSegments(app[1]);
+    if (!route) return serves;
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i]!.match(NEXT_METHOD_EXPORT);
+      if (!m) continue;
+      const method = (m[1] ?? m[2])!;
+      serves.push({
+        kind: "http",
+        id: `http:${method} ${normalizeRoute(route)}`,
+        method,
+        route,
+        file: rel,
+        line: i + 1,
+        via: "nextjs-route-handler",
+        confidence: 0.8, // path-derived route: more reliable than string-matched
+      });
+    }
+    return serves;
+  }
+  const pages = rel.match(NEXT_PAGES_API_FILE);
+  if (pages && lines.some((l) => /^export\s+default\b/.test(l))) {
+    const route =
+      `/api/${pages[1]!}`
+        .replace(/\/index$/, "")
+        .split("/")
+        .map((seg) => (NEXT_DYNAMIC_SEGMENT.test(seg) ? "{param}" : seg))
+        .join("/") || "/api";
+    // Pages handlers dispatch on req.method themselves — method is unknowable
+    // statically, so ANY (same convention as Flask @app.route).
+    serves.push({
+      kind: "http",
+      id: `http:ANY ${normalizeRoute(route)}`,
+      method: "ANY",
+      route,
+      file: rel,
+      line: 1,
+      via: "nextjs-pages-api",
+      confidence: 0.75,
+    });
+  }
+  return serves;
+}
+
+// ---------------------------------------------------------------------------
 // Extraction
 // ---------------------------------------------------------------------------
 
@@ -159,6 +232,7 @@ export async function extractContracts(repoRoot: string): Promise<ContractSurfac
       continue;
     }
     const lines = source.split("\n");
+    serves.push(...nextServes(rel, lines));
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
       if (line.length > 400 || COMMENT_LINE.test(line)) continue;

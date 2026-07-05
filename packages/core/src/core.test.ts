@@ -224,6 +224,38 @@ test("contracts: extracts express routes, proto rpcs, graphql fields, openapi pa
   assert.ok(proto.confidence > express.confidence);
 });
 
+test("contracts: Next.js routes — App Router file paths + pages/api", async () => {
+  const { extractContracts } = await import("./contracts.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "codemaps-test-"));
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("git", ["-C", dir, "init", "-q"]);
+
+  // App Router: multi-method handler, both export spellings.
+  await mkdir(path.join(dir, "web/app/api/github/webhook"), { recursive: true });
+  await writeFile(
+    path.join(dir, "web/app/api/github/webhook/route.ts"),
+    "export async function POST(request: Request) { return new Response('ok'); }\n" +
+      "export const GET = () => new Response('pong');\n",
+  );
+  // Route group stripped from the URL; dynamic segment normalized.
+  await mkdir(path.join(dir, "web/app/(marketing)/pricing/[tier]"), { recursive: true });
+  await writeFile(path.join(dir, "web/app/(marketing)/pricing/[tier]/route.ts"), "export function GET() {}\n");
+  // Pages Router: method is dispatched at runtime -> ANY.
+  await mkdir(path.join(dir, "web/pages/api/users"), { recursive: true });
+  await writeFile(path.join(dir, "web/pages/api/users/[id].ts"), "export default function handler(req, res) {}\n");
+  // A route.ts OUTSIDE an app/ dir must not match — the path is the contract.
+  await mkdir(path.join(dir, "lib"), { recursive: true });
+  await writeFile(path.join(dir, "lib/route.ts"), "export function GET() {}\n");
+
+  const s = await extractContracts(dir);
+  const ids = s.serves.map((c) => c.id);
+  assert.ok(ids.includes("http:POST /api/github/webhook"), `app-router function export: ${ids}`);
+  assert.ok(ids.includes("http:GET /api/github/webhook"), `app-router const export: ${ids}`);
+  assert.ok(ids.includes("http:GET /pricing/{param}"), `group stripped + param normalized: ${ids}`);
+  assert.ok(ids.includes("http:ANY /api/users/{param}"), `pages/api handler: ${ids}`);
+  assert.ok(!s.serves.some((c) => c.file === "lib/route.ts"), "route.ts outside app/ must not match");
+});
+
 // ---------------------------------------------------------------------------
 // Cross-repo stitching — the Phase 3 headline moat, tested with zero cloud
 // ---------------------------------------------------------------------------
