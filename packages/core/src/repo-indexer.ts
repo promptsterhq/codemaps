@@ -8,6 +8,7 @@ import { indexTypeScript } from "./ts-indexer.js";
 import { indexPython } from "./py-indexer.js";
 import { indexGo } from "./go-indexer.js";
 import { indexJava, indexKotlin } from "./jvm-indexer.js";
+import { indexRuby } from "./ruby-indexer.js";
 
 export interface RepoIndexResult {
   graph: MutableGraph;
@@ -33,6 +34,7 @@ export async function indexRepo(repoRoot: string): Promise<RepoIndexResult> {
     ["go", indexGo],
     ["java", indexJava],
     ["kotlin", indexKotlin],
+    ["ruby", indexRuby],
   ] as const) {
     const result = await index(repoRoot);
     if (result.fileCount === 0) continue;

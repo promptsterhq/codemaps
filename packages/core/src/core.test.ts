@@ -428,6 +428,51 @@ test("jvm indexer: Java + Kotlin symbols, imports, conservative calls", async ()
   );
 });
 
+test("ruby indexer: nested classes, singleton methods, requires, conservative calls", async () => {
+  const { indexRuby } = await import("./ruby-indexer.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "codemaps-test-"));
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("git", ["-C", dir, "init", "-q"]);
+
+  await mkdir(path.join(dir, "lib/acme"), { recursive: true });
+  await writeFile(
+    path.join(dir, "lib/acme/store.rb"),
+    "module Acme\n  class Store\n    def save\n    end\n\n    def self.build\n    end\n  end\nend\n",
+  );
+  await writeFile(
+    path.join(dir, "app.rb"),
+    "require \"acme/store\"\nrequire_relative \"helpers\"\n\nstore = Acme::Store.build()\nstore.save()\n",
+  );
+  await writeFile(path.join(dir, "helpers.rb"), "def format_money(cents)\nend\n");
+
+  const r = await indexRuby(dir);
+  const ids = r.nodes.map((n) => n.id);
+  assert.ok(ids.includes("rb:lib/acme/store.rb#Acme"), `module: ${ids}`);
+  assert.ok(ids.includes("rb:lib/acme/store.rb#Acme::Store"), `nested class: ${ids}`);
+  assert.ok(ids.includes("rb:lib/acme/store.rb#Acme::Store.save"), `method: ${ids}`);
+  assert.ok(ids.includes("rb:lib/acme/store.rb#Acme::Store.build"), `singleton method: ${ids}`);
+  assert.ok(ids.includes("rb:helpers.rb#format_money"), `top-level def: ${ids}`);
+
+  // require "acme/store" resolves via lib/; require_relative via the file dir.
+  assert.ok(
+    r.edges.some((e) => e.from === "file:app.rb" && e.to === "file:lib/acme/store.rb" && e.kind === "imports"),
+    `lib require: ${JSON.stringify(r.edges)}`,
+  );
+  assert.ok(
+    r.edges.some((e) => e.from === "file:app.rb" && e.to === "file:helpers.rb" && e.kind === "imports"),
+    `require_relative: ${JSON.stringify(r.edges)}`,
+  );
+  // Unique-name calls: build + save resolve; ambiguous/unknown skipped.
+  assert.ok(
+    r.edges.some((e) => e.from === "file:app.rb" && e.to === "rb:lib/acme/store.rb#Acme::Store.build" && e.kind === "calls"),
+    `singleton call: ${JSON.stringify(r.edges)}`,
+  );
+  assert.ok(
+    r.edges.some((e) => e.from === "file:app.rb" && e.to === "rb:lib/acme/store.rb#Acme::Store.save" && e.kind === "calls"),
+    `method call: ${JSON.stringify(r.edges)}`,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // Cross-repo stitching — the Phase 3 headline moat, tested with zero cloud
 // ---------------------------------------------------------------------------
